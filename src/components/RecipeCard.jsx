@@ -1,8 +1,18 @@
 import { useState } from 'react';
 import MacroBar from './MacroBar';
 
+function isValidUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default function RecipeCard({ recipe, index }) {
   const [open, setOpen] = useState(false);
+  const safeUrl = isValidUrl(recipe.sourceUrl) ? recipe.sourceUrl : null;
 
   return (
     <div style={{
@@ -64,9 +74,9 @@ export default function RecipeCard({ recipe, index }) {
             </div>
           )}
 
-          {recipe.sourceUrl && (
+          {safeUrl && (
             <a
-              href={recipe.sourceUrl}
+              href={safeUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -87,14 +97,14 @@ export default function RecipeCard({ recipe, index }) {
                   fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-body)",
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
-                  {recipe.sourceUrl}
+                  {safeUrl}
                 </div>
               </div>
               <span style={{ fontSize: 14, color: "var(--accent)" }}>↗</span>
             </a>
           )}
 
-          {!recipe.sourceUrl && (
+          {!safeUrl && (
             <div style={{
               marginTop: 14, padding: "10px 14px", borderRadius: 12,
               fontSize: 12, fontFamily: "var(--font-body)", color: "var(--text-muted)",

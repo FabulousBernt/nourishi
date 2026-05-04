@@ -1,10 +1,10 @@
-# 🍽 MealMuse
+# Nourishi
 
-AI-powered recipe discovery and meal planning app built with React, Vite, and the Anthropic API. Runs as a PWA on any device and can be compiled to native iOS/Android via Capacitor.
+AI-powered recipe discovery and meal planning app built with React, Vite, and Google Gemini. Runs as a PWA on any device, deployed on Vercel with a serverless backend, and can be compiled to native iOS/Android via Capacitor.
 
 ## Features
 
-- **Recipe Search** — Natural language recipe discovery ("spicy chicken bowls", "comfort food for winter") with web-sourced results
+- **Recipe Search** — Natural language recipe discovery ("spicy chicken bowls", "comfort food for winter") with web-sourced results via Google Search grounding
 - **Pantry Mode** — Add ingredients you have on hand, get recipes tailored to your kitchen
 - **Meal Planner** — Generate 1-week, 2-week, or 1-month meal plans for goals like bulking, cutting, low-carb, vegetarian protein, balanced, or Mediterranean
 - **Full Nutrition** — Every recipe and meal shows calories, protein, carbs, and fat with visual macro bars
@@ -14,46 +14,50 @@ AI-powered recipe discovery and meal planning app built with React, Vite, and th
 
 ### Prerequisites
 
-- Node.js 18+
-- An Anthropic API key ([get one here](https://console.anthropic.com))
+- Node.js 20+
+- A Google Gemini API key ([get one free here](https://aistudio.google.com/apikey))
 
 ### Setup
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/mealmuse.git
-cd mealmuse
+git clone https://github.com/FabulousBernt/nourishi.git
+cd nourishi
 
 # Install dependencies
 npm install
 
 # Create your environment file
 cp .env.example .env
-# Edit .env and add your VITE_ANTHROPIC_API_KEY
+# Edit .env and add your GEMINI_API_KEY
 
-# Start dev server
-npm run dev
+# Start dev server (requires Vercel CLI for API routes)
+npx vercel dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## API Key Setup
+## Architecture
 
-The app calls the Anthropic API directly from the browser. For production, you should proxy API calls through your own backend to avoid exposing your key.
-
-For development, create a `.env` file:
+The app uses a **Vercel serverless function** (`api/generate.js`) to proxy requests to the Google Gemini API. The API key is stored server-side and never exposed to the browser.
 
 ```
-VITE_ANTHROPIC_API_KEY=sk-ant-...
+Browser  →  /api/generate  →  Google Gemini API
+(React)     (Vercel fn)        (gemini-2.0-flash)
 ```
 
-Then update `src/App.jsx` to use the env variable in the fetch headers:
+## Deployment
 
-```js
-headers: {
-  "Content-Type": "application/json",
-  "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-},
+The app is deployed on Vercel at [nourishi.vercel.app](https://nourishi.vercel.app).
+
+To deploy your own:
+
+```bash
+npm install -g vercel
+vercel
+vercel env add GEMINI_API_KEY production
+vercel env add ALLOWED_ORIGIN production  # e.g. https://your-app.vercel.app
+vercel --prod
 ```
 
 ## Building for Production
@@ -65,7 +69,7 @@ npm run preview  # Preview the production build locally
 
 ## Native Mobile (iOS & Android)
 
-MealMuse uses [Capacitor](https://capacitorjs.com/) to compile to native apps.
+Nourishi uses [Capacitor](https://capacitorjs.com/) to compile to native apps.
 
 ```bash
 # First build the web app
@@ -102,7 +106,9 @@ The app includes PWA support out of the box via `vite-plugin-pwa`. After deployi
 ## Project Structure
 
 ```
-mealmuse/
+nourishi/
+├── api/
+│   └── generate.js       # Vercel serverless function (Gemini proxy)
 ├── public/
 │   └── favicon.svg
 ├── src/
@@ -120,6 +126,7 @@ mealmuse/
 ├── capacitor.config.ts
 ├── index.html
 ├── package.json
+├── vercel.json
 ├── README.md
 └── vite.config.js
 ```
@@ -128,7 +135,8 @@ mealmuse/
 
 - **React 18** — UI framework
 - **Vite 5** — Build tool & dev server
-- **Anthropic Claude API** — AI-powered recipe search, pantry matching, and meal planning
+- **Google Gemini API** — AI-powered recipe search, pantry matching, and meal planning
+- **Vercel** — Hosting & serverless functions
 - **Capacitor 6** — Native iOS/Android compilation
 - **vite-plugin-pwa** — Service worker & PWA manifest generation
 
