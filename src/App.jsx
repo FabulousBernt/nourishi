@@ -122,26 +122,19 @@ export default function App() {
         textAlign: "center",
         position: "relative",
       }}>
-        <div style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          background: "var(--accent-light)", padding: "6px 16px", borderRadius: 20,
-          marginBottom: 14,
-        }}>
-          <span style={{ fontSize: 14 }}>🍽</span>
-          <span style={{ fontSize: 12, fontFamily: "var(--font-body)", fontWeight: 600, color: "var(--accent)", letterSpacing: 0.5 }}>
-            AI-Powered Recipe Discovery
-          </span>
-        </div>
         <h1 style={{
-          fontFamily: "var(--font-display)", fontSize: 38, margin: "0 0 6px", color: "var(--text)",
+          fontFamily: "var(--font-display)", fontSize: 38, margin: "0 0 14px", color: "var(--text)",
           fontWeight: 900, lineHeight: 1.1, letterSpacing: -0.5,
         }}>
           Nourishi
         </h1>
         <div style={{
           width: 40, height: 3, background: "var(--gold)", borderRadius: 2,
-          margin: "0 auto",
+          margin: "0 auto 12px",
         }} />
+        <span style={{ fontSize: 12, fontFamily: "var(--font-body)", fontWeight: 600, color: "var(--accent)", letterSpacing: 0.5 }}>
+          AI-Powered Recipe Discovery
+        </span>
       </header>
 
       {/* Tab Nav */}
