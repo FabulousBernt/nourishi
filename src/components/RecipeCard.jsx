@@ -1,18 +1,8 @@
 import { useState } from 'react';
 import MacroBar from './MacroBar';
 
-function isValidUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 export default function RecipeCard({ recipe, index }) {
   const [open, setOpen] = useState(false);
-  const safeUrl = isValidUrl(recipe.sourceUrl) ? recipe.sourceUrl : null;
 
   return (
     <div style={{
@@ -74,45 +64,6 @@ export default function RecipeCard({ recipe, index }) {
             </div>
           )}
 
-          {safeUrl && (
-            <a
-              href={safeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                marginTop: 14, padding: "12px 16px", background: "var(--accent-dim)",
-                borderRadius: 12, textDecoration: "none", transition: "all 0.2s",
-                border: "1px solid transparent",
-              }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
-              onMouseLeave={e => e.currentTarget.style.borderColor = "transparent"}
-            >
-              <span style={{ fontSize: 16 }}>🔗</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)", color: "var(--accent)" }}>
-                  {recipe.sourceName || "View Original Recipe"}
-                </div>
-                <div style={{
-                  fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-body)",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {safeUrl}
-                </div>
-              </div>
-              <span style={{ fontSize: 14, color: "var(--accent)" }}>↗</span>
-            </a>
-          )}
-
-          {!safeUrl && (
-            <div style={{
-              marginTop: 14, padding: "10px 14px", borderRadius: 12,
-              fontSize: 12, fontFamily: "var(--font-body)", color: "var(--text-muted)",
-              background: "var(--accent-light)", fontStyle: "italic", textAlign: "center",
-            }}>
-              AI-generated recipe — no specific web source
-            </div>
-          )}
         </div>
       )}
     </div>
