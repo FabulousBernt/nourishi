@@ -27,6 +27,80 @@ function checkRateLimit(ip) {
   return true;
 }
 
+// Transform a TheMealDB meal object into our recipe schema
+function transformMealDBRecipe(meal) {
+  const ingredients = [];
+  for (let i = 1; i <= 20; i++) {
+    const ing = meal[`strIngredient${i}`]?.trim();
+    const measure = meal[`strMeasure${i}`]?.trim();
+    if (ing) {
+      ingredients.push(measure ? `${measure} ${ing}` : ing);
+    }
+  }
+
+  const instructions = (meal.strInstructions || "")
+    .split(/\r?\n/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  const description = (meal.strInstructions || "").split(/[.!?]/)[0]?.trim() + "." || "";
+
+  return {
+    name: meal.strMeal,
+    description: description.length > 120 ? description.slice(0, 117) + "..." : description,
+    cuisine: meal.strArea || null,
+    time: null,
+    servings: null,
+    calories: null,
+    protein: null,
+    carbs: null,
+    fat: null,
+    isApprox: false,
+    difficulty: null,
+    ingredients,
+    instructions,
+    source: "TheMealDB",
+    sourceUrl: meal.strSource || null,
+    thumbnail: meal.strMealThumb || null,
+  };
+}
+
+// Search TheMealDB by name
+async function searchMealDB(query) {
+  try {
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data.meals) return [];
+    return data.meals.slice(0, 4).map(transformMealDBRecipe);
+  } catch (e) {
+    console.error("TheMealDB search error:", e.message);
+    return [];
+  }
+}
+
+// Search TheMealDB by ingredient (returns less detail, needs lookup)
+async function searchMealDBByIngredient(ingredient) {
+  try {
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(ingredient)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data.meals) return [];
+    // Get full details for top 3 results
+    const detailed = await Promise.all(
+      data.meals.slice(0, 3).map(async (m) => {
+        const r = await fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${m.idMeal}`);
+        const d = await r.json();
+        return d.meals?.[0] ? transformMealDBRecipe(d.meals[0]) : null;
+      })
+    );
+    return detailed.filter(Boolean);
+  } catch (e) {
+    console.error("TheMealDB ingredient search error:", e.message);
+    return [];
+  }
+}
+
 async function callLLM(apiKey, model, systemPrompt, userPrompt) {
   const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
     method: "POST",
@@ -90,7 +164,7 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: "Too many requests. Please wait a moment and try again." });
   }
 
-  const { systemPrompt, userPrompt } = req.body;
+  const { systemPrompt, userPrompt, searchQuery, searchIngredient } = req.body;
 
   // Type validation
   if (typeof systemPrompt !== "string" || typeof userPrompt !== "string") {
@@ -110,24 +184,52 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Service temporarily unavailable" });
   }
 
+  // Run TheMealDB search in parallel with AI generation
+  const mealDBPromise = searchQuery
+    ? searchMealDB(searchQuery)
+    : searchIngredient
+      ? searchMealDBByIngredient(searchIngredient)
+      : Promise.resolve([]);
+
   // Try each model in the chain, falling back on rate limit or error
-  let lastError = null;
+  let aiResult = null;
   for (const model of MODEL_CHAIN) {
     const result = await callLLM(apiKey, model, systemPrompt, userPrompt);
-
     if (result.ok) {
-      return res.status(200).json({ text: result.text });
+      aiResult = result;
+      break;
     }
-
-    lastError = result.error;
-
-    // If not retryable (e.g. bad request), stop trying
     if (!result.retryable) break;
-
     console.log(`${model} rate limited (${result.status}), trying next model...`);
   }
 
-  return res.status(502).json({
-    error: lastError || "All AI models are busy. Please try again in a moment.",
-  });
+  const mealDBResults = await mealDBPromise;
+
+  // Parse AI results and mark with source
+  let aiRecipes = [];
+  if (aiResult?.text) {
+    const text = aiResult.text.replace(/```json?\n?/g, "").replace(/```/g, "");
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      try {
+        aiRecipes = JSON.parse(jsonMatch[0]).map(r => ({ ...r, source: "AI Generated" }));
+      } catch (e) {
+        console.error("AI JSON parse error:", e.message);
+      }
+    }
+  }
+
+  // Merge results: interleave TheMealDB and AI recipes
+  const combined = [];
+  const maxLen = Math.max(mealDBResults.length, aiRecipes.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < mealDBResults.length) combined.push(mealDBResults[i]);
+    if (i < aiRecipes.length) combined.push(aiRecipes[i]);
+  }
+
+  if (combined.length === 0) {
+    return res.status(502).json({ error: "No recipes found. Please try a different search." });
+  }
+
+  return res.status(200).json({ recipes: combined });
 }
