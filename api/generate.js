@@ -27,6 +27,46 @@ function checkRateLimit(ip) {
   return true;
 }
 
+// Use AI to estimate nutrition for TheMealDB recipes based on their ingredients
+async function estimateNutritionWithAI(apiKey, recipes) {
+  if (recipes.length === 0) return recipes;
+
+  const recipeList = recipes.map((r, i) => `${i + 1}. ${r.name}: ${r.ingredients.join(", ")}`).join("\n");
+
+  const prompt = `Estimate the nutrition per serving (assuming 4 servings) for each recipe based on its ingredients. Return ONLY a JSON array with objects containing: {"calories": number, "protein": number, "carbs": number, "fat": number} in the same order. Be realistic — a pasta carbonara is ~500-600 cal, a salad ~200-300 cal. Only return the JSON array, nothing else.
+
+Recipes:
+${recipeList}`;
+
+  const result = await callLLM(apiKey, MODEL_CHAIN[0], "You are a nutrition calculator. Return only valid JSON.", prompt);
+
+  if (!result.ok) return recipes;
+
+  try {
+    const text = result.text.replace(/```json?\n?/g, "").replace(/```/g, "");
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return recipes;
+
+    const nutritionData = JSON.parse(jsonMatch[0]);
+
+    return recipes.map((recipe, i) => {
+      const n = nutritionData[i];
+      if (!n) return recipe;
+      return {
+        ...recipe,
+        calories: n.calories || null,
+        protein: n.protein || null,
+        carbs: n.carbs || null,
+        fat: n.fat || null,
+        isApprox: true,
+      };
+    });
+  } catch (e) {
+    console.error("Nutrition AI parse error:", e.message);
+    return recipes;
+  }
+}
+
 // Transform a TheMealDB meal object into our recipe schema
 function transformMealDBRecipe(meal) {
   const ingredients = [];
@@ -50,7 +90,7 @@ function transformMealDBRecipe(meal) {
     description: description.length > 120 ? description.slice(0, 117) + "..." : description,
     cuisine: meal.strArea || null,
     time: null,
-    servings: null,
+    servings: "4",
     calories: null,
     protein: null,
     carbs: null,
@@ -203,7 +243,11 @@ export default async function handler(req, res) {
     console.log(`${model} rate limited (${result.status}), trying next model...`);
   }
 
+  // Wait for TheMealDB results, then estimate nutrition with AI in parallel
   const mealDBResults = await mealDBPromise;
+  const nutritionPromise = mealDBResults.length > 0
+    ? estimateNutritionWithAI(apiKey, mealDBResults)
+    : Promise.resolve([]);
 
   // Parse AI results and mark with source
   let aiRecipes = [];
@@ -219,11 +263,14 @@ export default async function handler(req, res) {
     }
   }
 
+  // Wait for nutrition estimates
+  const enrichedMealDB = await nutritionPromise;
+
   // Merge results: interleave TheMealDB and AI recipes
   const combined = [];
-  const maxLen = Math.max(mealDBResults.length, aiRecipes.length);
+  const maxLen = Math.max(enrichedMealDB.length, aiRecipes.length);
   for (let i = 0; i < maxLen; i++) {
-    if (i < mealDBResults.length) combined.push(mealDBResults[i]);
+    if (i < enrichedMealDB.length) combined.push(enrichedMealDB[i]);
     if (i < aiRecipes.length) combined.push(aiRecipes[i]);
   }
 

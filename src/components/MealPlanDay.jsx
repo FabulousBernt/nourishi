@@ -20,7 +20,7 @@ export default function MealPlanDay({ day, index }) {
           <div style={{ flex: 1 }}>
             <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16 }}>{day.day}</span>
             <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 12, fontFamily: "var(--font-body)", color: "var(--text-muted)" }}>
-              <span style={{ fontWeight: 700, color: "var(--text)" }}>🔥 {day.totalCalories || "—"} cal</span>
+              <span style={{ fontWeight: 700, color: "var(--text)" }}>{day.totalCalories || "—"} cal</span>
               {day.totalProtein && <span><span style={{ color: "var(--macro-protein)" }}>P:</span> {day.totalProtein}g</span>}
               {day.totalCarbs && <span><span style={{ color: "var(--macro-carbs)" }}>C:</span> {day.totalCarbs}g</span>}
               {day.totalFat && <span><span style={{ color: "var(--macro-fat)" }}>F:</span> {day.totalFat}g</span>}

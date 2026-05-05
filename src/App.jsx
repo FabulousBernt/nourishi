@@ -3,10 +3,11 @@ import IngredientTag from './components/IngredientTag';
 import RecipeCard from './components/RecipeCard';
 import MealPlanDay from './components/MealPlanDay';
 import LoadingPulse from './components/LoadingPulse';
+import { exportMealPlanPDF, exportMealPlanICS } from './utils/mealPlanExport';
 
 const TABS = [
   { id: "search", label: "Recipe Search", icon: "🔍" },
-  { id: "pantry", label: "Pantry Mode", icon: "🧊" },
+  { id: "pantry", label: "Pantry", icon: "🥫" },
   { id: "plan", label: "Meal Plan", icon: "📅" },
 ];
 
@@ -17,13 +18,10 @@ const PLAN_GOALS = [
   { id: "vegprotein", label: "Veggie Protein", icon: "🌱", desc: "Plant-based, protein-rich" },
   { id: "balanced", label: "Balanced", icon: "⚖️", desc: "Wholesome & varied" },
   { id: "mediterranean", label: "Mediterranean", icon: "🫒", desc: "Heart-healthy classics" },
+  { id: "family", label: "Family Plan", icon: "👨‍👩‍👧‍👦", desc: "Kid & adult friendly, max 30 min" },
+  { id: "quick", label: "< 30 Min", icon: "⏱", desc: "Fast meals, under 30 minutes" },
 ];
 
-const PLAN_DURATIONS = [
-  { id: "1week", label: "1 Week" },
-  { id: "2weeks", label: "2 Weeks" },
-  { id: "1month", label: "1 Month" },
-];
 
 export default function App() {
   const [tab, setTab] = useState("search");
@@ -31,7 +29,6 @@ export default function App() {
   const [ingredients, setIngredients] = useState([]);
   const [ingInput, setIngInput] = useState("");
   const [goal, setGoal] = useState(null);
-  const [duration, setDuration] = useState("1week");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -96,11 +93,14 @@ export default function App() {
   const generateMealPlan = () => {
     if (!goal) return;
     const goalInfo = PLAN_GOALS.find(g => g.id === goal);
-    const durInfo = PLAN_DURATIONS.find(d => d.id === duration);
-    const days = duration === "1week" ? 7 : duration === "2weeks" ? 14 : 30;
+    const extraContext = goal === "family"
+      ? " All meals must be kid-friendly AND enjoyable for adults — no overly spicy or complex flavors. Every meal must take 30 minutes or less to prepare and cook."
+      : goal === "quick"
+        ? " Every single meal (breakfast, lunch, dinner, snack) must take under 30 minutes total to prepare and cook. Focus on simple, fast recipes."
+        : "";
     callAI(
-      `You are an expert nutritionist and meal planner. Return ONLY a JSON array of ${days} day objects. Each object must have: day (string like "Day 1 - Monday"), totalCalories (number), totalProtein (number, grams), totalCarbs (number, grams), totalFat (number, grams), and for each meal an object instead of a string: breakfast (object with: name, calories, protein, carbs, fat), lunch (same structure), dinner (same structure), snack (same structure). All nutrition values are approximate estimates. Tailor everything to the goal. No markdown, ONLY the JSON array.`,
-      `Create a ${durInfo.label} meal plan for the goal: ${goalInfo.label} - ${goalInfo.desc}. Make it varied, practical, and delicious.`
+      `You are an expert nutritionist and meal planner. Return ONLY a JSON array of 7 day objects. Each object must have: day (string like "Day 1 - Monday"), totalCalories (number), totalProtein (number, grams), totalCarbs (number, grams), totalFat (number, grams), and for each meal an object instead of a string: breakfast (object with: name, calories, protein, carbs, fat), lunch (same structure), dinner (same structure), snack (same structure). All nutrition values are approximate estimates. Tailor everything to the goal. No markdown, ONLY the JSON array.`,
+      `Create a 1 week meal plan for the goal: ${goalInfo.label} - ${goalInfo.desc}. Make it varied, practical, and delicious.${extraContext}`
     );
   };
 
@@ -168,7 +168,7 @@ export default function App() {
         {tab === "search" && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.6 }}>
-              Describe what you're craving — a cuisine, a flavor, a mood. MealMuse will find the perfect recipes.
+              Describe what you're craving and Nourishi will find the recipes.
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               <div style={{ flex: 1, position: "relative" }}>
@@ -220,7 +220,7 @@ export default function App() {
         {tab === "pantry" && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.6 }}>
-              Add the ingredients you have on hand, and MealMuse will craft recipes around them.
+              Add the ingredients you have on hand, and Nourishi will craft recipes around them.
             </p>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               <input
@@ -280,7 +280,7 @@ export default function App() {
         {tab === "plan" && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.6 }}>
-              Choose your nutrition goal and timeframe. MealMuse will generate a complete meal plan.
+              Choose your nutrition goal to generate a complete 1 week meal plan.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
               {PLAN_GOALS.map(g => (
@@ -297,21 +297,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              {PLAN_DURATIONS.map(d => (
-                <button key={d.id} onClick={() => setDuration(d.id)} style={{
-                  flex: 1, padding: "12px", borderRadius: 12,
-                  border: duration === d.id ? "1.5px solid var(--accent)" : "1.5px solid var(--border-light)",
-                  background: duration === d.id ? "var(--accent-light)" : "var(--surface)",
-                  color: duration === d.id ? "var(--accent)" : "var(--text-muted)",
-                  fontWeight: 700, fontSize: 14, fontFamily: "var(--font-body)",
-                  cursor: "pointer", transition: "all 0.25s",
-                  boxShadow: "var(--shadow-sm)",
-                }}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
             {goal && (
               <button onClick={generateMealPlan} disabled={loading} style={{
                 width: "100%", padding: "16px", borderRadius: 50, border: "none",
@@ -320,7 +305,7 @@ export default function App() {
                 cursor: "pointer", transition: "all 0.2s",
                 boxShadow: "var(--shadow-md)",
               }}>
-                Generate {PLAN_DURATIONS.find(d => d.id === duration)?.label} Plan
+                Generate 1 Week Plan
               </button>
             )}
           </div>
@@ -328,11 +313,7 @@ export default function App() {
 
         {/* Loading */}
         {loading && (
-          <LoadingPulse text={
-            tab === "plan" ? "Crafting your personalized meal plan..." :
-            tab === "pantry" ? "Finding recipes with your ingredients..." :
-            "Searching for the perfect recipes..."
-          } />
+          <LoadingPulse />
         )}
 
         {/* Error */}
@@ -366,12 +347,36 @@ export default function App() {
         {/* Results: Meal Plan */}
         {results && tab === "plan" && (
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 8 }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 4px", color: "var(--text)" }}>
-              Your {PLAN_GOALS.find(g => g.id === goal)?.label} Plan
-            </h2>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 12px", fontFamily: "var(--font-body)" }}>
-              Tap any day to see the full breakdown.
-            </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+              <div>
+                <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 4px", color: "var(--text)" }}>
+                  Your {PLAN_GOALS.find(g => g.id === goal)?.label} Plan
+                </h2>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 12px", fontFamily: "var(--font-body)" }}>
+                  Tap any day to see the full breakdown.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => exportMealPlanPDF(results, PLAN_GOALS.find(g => g.id === goal)?.label)} style={{
+                  padding: "8px 14px", borderRadius: 10, border: "1.5px solid var(--border-light)",
+                  background: "var(--surface)", color: "var(--text)", cursor: "pointer",
+                  fontSize: 12, fontFamily: "var(--font-body)", fontWeight: 700,
+                  display: "flex", alignItems: "center", gap: 5,
+                  boxShadow: "var(--shadow-sm)", transition: "all 0.2s",
+                }}>
+                  📄 PDF
+                </button>
+                <button onClick={() => exportMealPlanICS(results, PLAN_GOALS.find(g => g.id === goal)?.label)} style={{
+                  padding: "8px 14px", borderRadius: 10, border: "1.5px solid var(--border-light)",
+                  background: "var(--surface)", color: "var(--text)", cursor: "pointer",
+                  fontSize: 12, fontFamily: "var(--font-body)", fontWeight: 700,
+                  display: "flex", alignItems: "center", gap: 5,
+                  boxShadow: "var(--shadow-sm)", transition: "all 0.2s",
+                }}>
+                  📅 Calendar
+                </button>
+              </div>
+            </div>
             {results.map((day, i) => <MealPlanDay key={i} day={day} index={i} />)}
           </div>
         )}

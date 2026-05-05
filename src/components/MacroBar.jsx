@@ -8,7 +8,7 @@ export default function MacroBar({ calories, protein, carbs, fat, isApprox }) {
     <div style={{ marginTop: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 800, fontFamily: "var(--font-body)", color: "var(--text)" }}>
-          🔥 {calories || "—"} cal
+          {calories || "—"} cal
         </span>
         {isApprox && (
           <span style={{
