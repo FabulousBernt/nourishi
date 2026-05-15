@@ -5,6 +5,8 @@ import {
   transformMealDBRecipe,
 } from "../../../src/lib/api-helpers.js";
 
+export const maxDuration = 60;
+
 const MAX_PROMPT_LENGTH = 5000;
 const MAX_BODY_SIZE = 20000;
 
