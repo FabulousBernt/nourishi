@@ -51,9 +51,9 @@ const PAGES = {
 
         <h3>Data We Collect</h3>
         <p>
-          The Plateful does <strong>not</strong> collect, store, or retain any personal data. We do
-          not use cookies, analytics trackers, or advertising pixels. There are no user accounts,
-          no sign-ups, and no login required.
+          The Plateful does <strong>not</strong> directly collect, store, or retain any personal data.
+          There are no user accounts, no sign-ups, and no login required. However, third-party
+          services used by the app (such as Google AdSense) may collect data as described below.
         </p>
 
         <h3>Data Stored on Your Device</h3>
@@ -82,7 +82,27 @@ const PAGES = {
             from Google Fonts. Google may log standard request data (IP address, browser info) as
             described in their privacy policy.
           </li>
+          <li>
+            <strong>Google AdSense</strong> — The app displays ads served by Google AdSense. Google
+            may use cookies and web beacons to serve ads based on your browsing activity. Google's
+            advertising cookies enable it and its partners to serve ads based on your visit to this
+            site and/or other sites on the Internet. You can opt out of personalized advertising by
+            visiting{" "}
+            <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--accent)" }}>Google Ads Settings</a>.
+            For more information, see{" "}
+            <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--accent)" }}>Google's Privacy Policy</a>.
+          </li>
         </ul>
+
+        <h3>Cookies</h3>
+        <p>
+          The Plateful itself does not set any cookies. However, Google AdSense and Google Fonts
+          may set cookies on your device to serve and measure advertisements and load fonts.
+          These are third-party cookies governed by Google's privacy policies. You can manage
+          or disable cookies through your browser settings.
+        </p>
 
         <h3>Rate Limiting</h3>
         <p>
@@ -171,7 +191,15 @@ const PAGES = {
           plans and recipes for personal, non-commercial purposes.
         </p>
 
-        <h3>8. Limitation of Liability</h3>
+        <h3>8. Advertising</h3>
+        <p>
+          The Plateful displays advertisements served by Google AdSense. These ads may be
+          personalized based on your browsing activity using cookies set by Google. By using
+          this service, you acknowledge that third-party advertising is part of the experience.
+          You may opt out of personalized ads via your Google Ads Settings.
+        </p>
+
+        <h3>9. Limitation of Liability</h3>
         <p>
           The Plateful and its creators shall not be held liable for any damages arising from the use
           of this service, including but not limited to: adverse health effects from following
@@ -179,7 +207,7 @@ const PAGES = {
           for by the AI, or any inaccuracies in recipe instructions or nutritional data.
         </p>
 
-        <h3>9. Changes to These Terms</h3>
+        <h3>10. Changes to These Terms</h3>
         <p>
           We reserve the right to modify these terms at any time. Continued use of The Plateful after
           changes constitutes acceptance of the updated terms.
