@@ -2,7 +2,31 @@
 const rateLimit = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 10; // max requests per IP per minute
+const RATE_LIMIT_MAX_ENTRIES = 10000; // prevent unbounded map growth
 const MAX_PROMPT_LENGTH = 5000;
+const MAX_BODY_SIZE = 20000; // max request body size in bytes
+
+// Content blocklist — server-side mirror of src/utils/contentFilter.js
+const BLOCKED_PATTERNS = [
+  "murder", "\\bkill\\b", "suicide", "torture", "\\bassault\\b", "\\bstab\\b", "\\bshoot",
+  "strangle", "dismember", "decapitat", "mutilat", "massacre", "genocide",
+  "\\bbomb\\b", "terrorist", "terroris",
+  "porn", "hentai", "\\bxxx\\b", "orgasm", "\\borgy\\b", "fetish", "bdsm",
+  "genitals", "penis", "vagina", "\\banus\\b", "\\bnude\\b", "\\bnaked\\b",
+  "masturbat", "ejaculat", "erotic",
+  "cocaine", "\\bheroin\\b", "methamphetamine", "meth lab", "fentanyl", "crack pipe",
+  "drug deal", "overdose",
+  "nigger", "nigga", "faggot", "\\bkike\\b", "\\bspic\\b", "\\bchink\\b", "wetback",
+  "white power", "white supremac", "\\bnazi", "heil hitler",
+  "how to make a weapon", "how to poison", "child abuse", "pedophil", "\\brape\\b",
+];
+const blockedRegex = new RegExp(
+  BLOCKED_PATTERNS.join("|"),
+  "i"
+);
+function isBlockedContent(str) {
+  return typeof str === "string" && blockedRegex.test(str);
+}
 
 // Models to try in order on Cerebras (free tier: 30 RPM, 1M tokens/day)
 const MODEL_CHAIN = [
@@ -15,8 +39,22 @@ const ALLOWED_ORIGINS = [
   process.env.ALLOWED_ORIGIN,
 ].filter(Boolean);
 
+// Sanitize user-provided text: strip control chars and limit length
+function sanitizeInput(str, maxLen = 500) {
+  if (typeof str !== "string") return "";
+  // Remove control characters (except newline/tab), null bytes, and non-printable chars
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").slice(0, maxLen).trim();
+}
+
 function checkRateLimit(ip) {
   const now = Date.now();
+  // Evict expired entries if map is getting large
+  if (rateLimit.size > RATE_LIMIT_MAX_ENTRIES) {
+    for (const [key, entry] of rateLimit) {
+      if (now - entry.windowStart > RATE_LIMIT_WINDOW) rateLimit.delete(key);
+    }
+  }
   const entry = rateLimit.get(ip);
   if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
     rateLimit.set(ip, { windowStart: now, count: 1 });
@@ -178,7 +216,13 @@ async function callLLM(apiKey, model, systemPrompt, userPrompt) {
 }
 
 export default async function handler(req, res) {
-  // CORS handling
+  // Security headers
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Content-Type", "application/json");
+
+  // CORS handling — deny by default if ALLOWED_ORIGIN is not configured
   const origin = req.headers.origin;
   if (ALLOWED_ORIGINS.length > 0 && origin) {
     if (ALLOWED_ORIGINS.includes(origin)) {
@@ -186,6 +230,11 @@ export default async function handler(req, res) {
     } else {
       return res.status(403).json({ error: "Forbidden" });
     }
+  } else if (ALLOWED_ORIGINS.length > 0) {
+    // No origin header but origins are configured — allow (same-origin requests)
+  } else if (origin) {
+    // ALLOWED_ORIGIN not set — reject cross-origin requests
+    return res.status(403).json({ error: "Forbidden" });
   }
 
   if (req.method === "OPTIONS") {
@@ -198,13 +247,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // Request body size check
+  const bodyStr = JSON.stringify(req.body || {});
+  if (bodyStr.length > MAX_BODY_SIZE) {
+    return res.status(413).json({ error: "Request too large" });
+  }
+
   // Rate limiting
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || "unknown";
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: "Too many requests. Please wait a moment and try again." });
   }
 
-  const { systemPrompt, userPrompt, searchQuery, searchIngredient } = req.body;
+  const { systemPrompt, userPrompt, searchQuery, searchIngredient } = req.body || {};
 
   // Type validation
   if (typeof systemPrompt !== "string" || typeof userPrompt !== "string") {
@@ -219,16 +274,25 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Request too large" });
   }
 
+  // Server-side sanitization of user-facing search fields
+  const cleanSearchQuery = searchQuery ? sanitizeInput(searchQuery, 200) : undefined;
+  const cleanSearchIngredient = searchIngredient ? sanitizeInput(searchIngredient, 50) : undefined;
+
+  // Content moderation — block inappropriate terms
+  if (isBlockedContent(userPrompt) || isBlockedContent(cleanSearchQuery) || isBlockedContent(cleanSearchIngredient)) {
+    return res.status(400).json({ error: "Please search for food-related terms." });
+  }
+
   const apiKey = process.env.CEREBRAS_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: "Service temporarily unavailable" });
   }
 
   // Run TheMealDB search in parallel with AI generation
-  const mealDBPromise = searchQuery
-    ? searchMealDB(searchQuery)
-    : searchIngredient
-      ? searchMealDBByIngredient(searchIngredient)
+  const mealDBPromise = cleanSearchQuery
+    ? searchMealDB(cleanSearchQuery)
+    : cleanSearchIngredient
+      ? searchMealDBByIngredient(cleanSearchIngredient)
       : Promise.resolve([]);
 
   // Try each model in the chain, falling back on rate limit or error
@@ -280,3 +344,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ recipes: combined });
 }
+
+export { sanitizeInput, checkRateLimit, isBlockedContent, transformMealDBRecipe };

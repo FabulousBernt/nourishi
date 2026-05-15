@@ -10,7 +10,7 @@ export default function RecipeCard({ recipe, index }) {
       border: "1.5px solid var(--border-light)", boxShadow: "var(--shadow-sm)",
       animation: `fadeSlideUp 0.4s ease ${index * 0.07}s both`,
     }}>
-      {recipe.thumbnail && (
+      {recipe.thumbnail && /^https?:\/\//i.test(recipe.thumbnail) && (
         <img
           src={recipe.thumbnail}
           alt={recipe.name}
@@ -85,7 +85,7 @@ export default function RecipeCard({ recipe, index }) {
             </div>
           )}
 
-          {recipe.sourceUrl && (
+          {recipe.sourceUrl && /^https?:\/\//i.test(recipe.sourceUrl) && (
             <a
               href={recipe.sourceUrl}
               target="_blank"
