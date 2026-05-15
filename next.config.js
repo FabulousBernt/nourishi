@@ -29,6 +29,8 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Allow Turbopack (Next.js 16 default) even though @ducanh2912/next-pwa adds webpack config
+  turbopack: {},
   output: process.env.STATIC_EXPORT ? "export" : undefined,
   images: {
     remotePatterns: [
