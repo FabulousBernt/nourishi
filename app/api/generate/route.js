@@ -1,32 +1,12 @@
-// Simple in-memory rate limiter (per Vercel instance)
-const rateLimit = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 10; // max requests per IP per minute
-const RATE_LIMIT_MAX_ENTRIES = 10000; // prevent unbounded map growth
-const MAX_PROMPT_LENGTH = 5000;
-const MAX_BODY_SIZE = 20000; // max request body size in bytes
+import {
+  sanitizeInput,
+  checkRateLimit,
+  isBlockedContent,
+  transformMealDBRecipe,
+} from "../../../src/lib/api-helpers.js";
 
-// Content blocklist — server-side mirror of src/utils/contentFilter.js
-const BLOCKED_PATTERNS = [
-  "murder", "\\bkill\\b", "suicide", "torture", "\\bassault\\b", "\\bstab\\b", "\\bshoot",
-  "strangle", "dismember", "decapitat", "mutilat", "massacre", "genocide",
-  "\\bbomb\\b", "terrorist", "terroris",
-  "porn", "hentai", "\\bxxx\\b", "orgasm", "\\borgy\\b", "fetish", "bdsm",
-  "genitals", "penis", "vagina", "\\banus\\b", "\\bnude\\b", "\\bnaked\\b",
-  "masturbat", "ejaculat", "erotic",
-  "cocaine", "\\bheroin\\b", "methamphetamine", "meth lab", "fentanyl", "crack pipe",
-  "drug deal", "overdose",
-  "nigger", "nigga", "faggot", "\\bkike\\b", "\\bspic\\b", "\\bchink\\b", "wetback",
-  "white power", "white supremac", "\\bnazi", "heil hitler",
-  "how to make a weapon", "how to poison", "child abuse", "pedophil", "\\brape\\b",
-];
-const blockedRegex = new RegExp(
-  BLOCKED_PATTERNS.join("|"),
-  "i"
-);
-function isBlockedContent(str) {
-  return typeof str === "string" && blockedRegex.test(str);
-}
+const MAX_PROMPT_LENGTH = 5000;
+const MAX_BODY_SIZE = 20000;
 
 // Models to try in order on Cerebras (free tier: 30 RPM, 1M tokens/day)
 const MODEL_CHAIN = [
@@ -39,30 +19,18 @@ const ALLOWED_ORIGINS = [
   process.env.ALLOWED_ORIGIN,
 ].filter(Boolean);
 
-// Sanitize user-provided text: strip control chars and limit length
-function sanitizeInput(str, maxLen = 500) {
-  if (typeof str !== "string") return "";
-  // Remove control characters (except newline/tab), null bytes, and non-printable chars
-  // eslint-disable-next-line no-control-regex
-  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").slice(0, maxLen).trim();
-}
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Content-Type": "application/json",
+};
 
-function checkRateLimit(ip) {
-  const now = Date.now();
-  // Evict expired entries if map is getting large
-  if (rateLimit.size > RATE_LIMIT_MAX_ENTRIES) {
-    for (const [key, entry] of rateLimit) {
-      if (now - entry.windowStart > RATE_LIMIT_WINDOW) rateLimit.delete(key);
-    }
-  }
-  const entry = rateLimit.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
-    rateLimit.set(ip, { windowStart: now, count: 1 });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count++;
-  return true;
+function jsonResponse(body, status = 200, extraHeaders = {}) {
+  return Response.json(body, {
+    status,
+    headers: { ...SECURITY_HEADERS, ...extraHeaders },
+  });
 }
 
 // Use AI to estimate nutrition for TheMealDB recipes based on their ingredients
@@ -105,44 +73,6 @@ ${recipeList}`;
   }
 }
 
-// Transform a TheMealDB meal object into our recipe schema
-function transformMealDBRecipe(meal) {
-  const ingredients = [];
-  for (let i = 1; i <= 20; i++) {
-    const ing = meal[`strIngredient${i}`]?.trim();
-    const measure = meal[`strMeasure${i}`]?.trim();
-    if (ing) {
-      ingredients.push(measure ? `${measure} ${ing}` : ing);
-    }
-  }
-
-  const instructions = (meal.strInstructions || "")
-    .split(/\r?\n/)
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
-
-  const description = (meal.strInstructions || "").split(/[.!?]/)[0]?.trim() + "." || "";
-
-  return {
-    name: meal.strMeal,
-    description: description.length > 120 ? description.slice(0, 117) + "..." : description,
-    cuisine: meal.strArea || null,
-    time: null,
-    servings: "4",
-    calories: null,
-    protein: null,
-    carbs: null,
-    fat: null,
-    isApprox: false,
-    difficulty: null,
-    ingredients,
-    instructions,
-    source: "TheMealDB",
-    sourceUrl: meal.strSource || null,
-    thumbnail: meal.strMealThumb || null,
-  };
-}
-
 // Search TheMealDB by name
 async function searchMealDB(query) {
   try {
@@ -164,7 +94,6 @@ async function searchMealDBByIngredient(ingredient) {
     if (!res.ok) return [];
     const data = await res.json();
     if (!data.meals) return [];
-    // Get full details for top 3 results
     const detailed = await Promise.all(
       data.meals.slice(0, 3).map(async (m) => {
         const r = await fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${m.idMeal}`);
@@ -215,63 +144,59 @@ async function callLLM(apiKey, model, systemPrompt, userPrompt) {
   return { ok: true, text };
 }
 
-export default async function handler(req, res) {
-  // Security headers
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Content-Type", "application/json");
-
+export async function POST(request) {
   // CORS handling — deny by default if ALLOWED_ORIGIN is not configured
-  const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.length > 0 && origin) {
+  const origin = request.headers.get("origin");
+  const corsHeaders = {};
+
+  // In Next.js, the API route is same-origin — the browser may still send an origin header.
+  // Allow same-origin requests by comparing origin to the request URL's origin.
+  const requestOrigin = new URL(request.url).origin;
+  const isSameOrigin = origin === requestOrigin;
+
+  if (ALLOWED_ORIGINS.length > 0 && origin && !isSameOrigin) {
     if (ALLOWED_ORIGINS.includes(origin)) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
+      corsHeaders["Access-Control-Allow-Origin"] = origin;
     } else {
-      return res.status(403).json({ error: "Forbidden" });
+      return jsonResponse({ error: "Forbidden" }, 403);
     }
-  } else if (ALLOWED_ORIGINS.length > 0) {
-    // No origin header but origins are configured — allow (same-origin requests)
-  } else if (origin) {
+  } else if (!ALLOWED_ORIGINS.length && origin && !isSameOrigin) {
     // ALLOWED_ORIGIN not set — reject cross-origin requests
-    return res.status(403).json({ error: "Forbidden" });
-  }
-
-  if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Methods", "POST");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    return res.status(204).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return jsonResponse({ error: "Forbidden" }, 403);
   }
 
   // Request body size check
-  const bodyStr = JSON.stringify(req.body || {});
-  if (bodyStr.length > MAX_BODY_SIZE) {
-    return res.status(413).json({ error: "Request too large" });
+  const bodyText = await request.text();
+  if (bodyText.length > MAX_BODY_SIZE) {
+    return jsonResponse({ error: "Request too large" }, 413, corsHeaders);
+  }
+
+  let body;
+  try {
+    body = JSON.parse(bodyText);
+  } catch {
+    return jsonResponse({ error: "Invalid JSON" }, 400, corsHeaders);
   }
 
   // Rate limiting
-  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || "unknown";
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (!checkRateLimit(ip)) {
-    return res.status(429).json({ error: "Too many requests. Please wait a moment and try again." });
+    return jsonResponse({ error: "Too many requests. Please wait a moment and try again." }, 429, corsHeaders);
   }
 
-  const { systemPrompt, userPrompt, searchQuery, searchIngredient } = req.body || {};
+  const { systemPrompt, userPrompt, searchQuery, searchIngredient } = body || {};
 
   // Type validation
   if (typeof systemPrompt !== "string" || typeof userPrompt !== "string") {
-    return res.status(400).json({ error: "Invalid request" });
+    return jsonResponse({ error: "Invalid request" }, 400, corsHeaders);
   }
 
   // Length validation
   if (!systemPrompt.trim() || !userPrompt.trim()) {
-    return res.status(400).json({ error: "Missing required fields" });
+    return jsonResponse({ error: "Missing required fields" }, 400, corsHeaders);
   }
   if (systemPrompt.length > MAX_PROMPT_LENGTH || userPrompt.length > MAX_PROMPT_LENGTH) {
-    return res.status(400).json({ error: "Request too large" });
+    return jsonResponse({ error: "Request too large" }, 400, corsHeaders);
   }
 
   // Server-side sanitization of user-facing search fields
@@ -280,12 +205,12 @@ export default async function handler(req, res) {
 
   // Content moderation — block inappropriate terms
   if (isBlockedContent(userPrompt) || isBlockedContent(cleanSearchQuery) || isBlockedContent(cleanSearchIngredient)) {
-    return res.status(400).json({ error: "Please search for food-related terms." });
+    return jsonResponse({ error: "Please search for food-related terms." }, 400, corsHeaders);
   }
 
   const apiKey = process.env.CEREBRAS_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "Service temporarily unavailable" });
+    return jsonResponse({ error: "Service temporarily unavailable" }, 500, corsHeaders);
   }
 
   // Run TheMealDB search in parallel with AI generation
@@ -339,10 +264,25 @@ export default async function handler(req, res) {
   }
 
   if (combined.length === 0) {
-    return res.status(502).json({ error: "No recipes found. Please try a different search." });
+    return jsonResponse({ error: "No recipes found. Please try a different search." }, 502, corsHeaders);
   }
 
-  return res.status(200).json({ recipes: combined });
+  return jsonResponse({ recipes: combined }, 200, corsHeaders);
 }
 
-export { sanitizeInput, checkRateLimit, isBlockedContent, transformMealDBRecipe };
+export async function OPTIONS(request) {
+  const origin = request.headers.get("origin");
+  const corsHeaders = {};
+  if (ALLOWED_ORIGINS.length > 0 && origin && ALLOWED_ORIGINS.includes(origin)) {
+    corsHeaders["Access-Control-Allow-Origin"] = origin;
+  }
+  return new Response(null, {
+    status: 204,
+    headers: {
+      ...SECURITY_HEADERS,
+      ...corsHeaders,
+      "Access-Control-Allow-Methods": "POST",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}

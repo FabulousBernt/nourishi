@@ -1,7 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RecipeCard from "./RecipeCard";
+
+vi.mock("next/link", () => ({
+  default: ({ children, href, ...props }) => <a href={href} {...props}>{children}</a>,
+}));
 
 const baseRecipe = {
   name: "Spaghetti Carbonara",
@@ -77,7 +81,7 @@ describe("RecipeCard", () => {
     const recipe = { ...baseRecipe, sourceUrl: "javascript:alert(1)" };
     render(<RecipeCard recipe={recipe} index={0} />);
     await user.click(screen.getByText("Spaghetti Carbonara"));
-    expect(screen.queryByText("View Original Recipe")).not.toBeInTheDocument();
+    expect(screen.queryByText(/View Original/)).not.toBeInTheDocument();
   });
 
   it("renders source link with security attributes for valid URL", async () => {
@@ -85,7 +89,7 @@ describe("RecipeCard", () => {
     const recipe = { ...baseRecipe, sourceUrl: "https://example.com/recipe" };
     render(<RecipeCard recipe={recipe} index={0} />);
     await user.click(screen.getByText("Spaghetti Carbonara"));
-    const link = screen.getByRole("link");
+    const link = screen.getByRole("link", { name: /View Original/ });
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("href", "https://example.com/recipe");

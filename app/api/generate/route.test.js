@@ -1,43 +1,29 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import handler, { sanitizeInput, isBlockedContent, transformMealDBRecipe } from "./generate.js";
+import { sanitizeInput, isBlockedContent, transformMealDBRecipe } from "../../../src/lib/api-helpers.js";
+import { POST } from "./route.js";
 
-// --- Helpers to build mock req/res ---
+// --- Helpers to build Request objects ---
 
-function mockReq(overrides = {}) {
-  return {
+function makeRequest(body, headers = {}) {
+  return new Request("http://localhost:3000/api/generate", {
     method: "POST",
-    headers: {},
-    body: {
-      systemPrompt: "You are a chef.",
-      userPrompt: "Find pasta recipes",
-    },
-    ...overrides,
-  };
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
 }
 
-function mockRes() {
-  const res = {
-    _status: null,
-    _json: null,
-    _headers: {},
-    _ended: false,
-    status(code) { res._status = code; return res; },
-    json(data) { res._json = data; return res; },
-    end() { res._ended = true; return res; },
-    setHeader(key, val) { res._headers[key] = val; },
-  };
-  return res;
-}
+const defaultBody = {
+  systemPrompt: "You are a chef.",
+  userPrompt: "Find pasta recipes",
+};
 
 // --- Mock fetch globally ---
 const originalFetch = globalThis.fetch;
 let fetchMock;
 
 beforeEach(() => {
-  // Clear rate limit map between tests
   vi.useFakeTimers();
-  // Reset env
   delete process.env.ALLOWED_ORIGIN;
   process.env.CEREBRAS_API_KEY = "test-key";
 
@@ -51,7 +37,6 @@ afterEach(() => {
   delete process.env.CEREBRAS_API_KEY;
 });
 
-// Helper: set up fetch to return successful AI + empty MealDB
 function mockSuccessfulFetch() {
   fetchMock.mockImplementation((url) => {
     if (url.includes("cerebras.ai")) {
@@ -134,7 +119,6 @@ describe("transformMealDBRecipe", () => {
       strSource: "https://example.com",
       strMealThumb: "https://example.com/img.jpg",
     };
-    // Fill remaining ingredient slots with empty/null
     for (let i = 4; i <= 20; i++) {
       meal[`strIngredient${i}`] = null;
       meal[`strMeasure${i}`] = null;
@@ -163,124 +147,94 @@ describe("transformMealDBRecipe", () => {
 
 // ---- Handler integration tests ----
 
-describe("handler", () => {
-  describe("method enforcement", () => {
-    it("returns 405 for GET", async () => {
-      const req = mockReq({ method: "GET" });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(405);
-      expect(res._json.error).toBe("Method not allowed");
-    });
-
-    it("returns 204 for OPTIONS", async () => {
-      const req = mockReq({ method: "OPTIONS" });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(204);
-      expect(res._ended).toBe(true);
-    });
-  });
-
+describe("POST handler", () => {
   describe("CORS", () => {
     it("rejects cross-origin when ALLOWED_ORIGIN not set", async () => {
-      const req = mockReq({ headers: { origin: "https://evil.com" } });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(403);
-    });
-
-    it("rejects wrong origin when ALLOWED_ORIGIN is set", async () => {
-      process.env.ALLOWED_ORIGIN = "https://theplateful.app";
-      // Re-import to pick up env change — but since ALLOWED_ORIGINS is built at module load,
-      // we test the handler's behavior with headers directly
-      const req = mockReq({ headers: { origin: "https://evil.com" } });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(403);
+      const req = makeRequest(defaultBody, { origin: "https://evil.com" });
+      const res = await POST(req);
+      expect(res.status).toBe(403);
     });
 
     it("allows same-origin requests (no origin header)", async () => {
       mockSuccessfulFetch();
-      const req = mockReq({ headers: {} });
-      const res = mockRes();
-      await handler(req, res);
-      // Should not be 403 — proceeds to process request
-      expect(res._status).not.toBe(403);
+      const req = makeRequest(defaultBody);
+      const res = await POST(req);
+      expect(res.status).not.toBe(403);
     });
   });
 
   describe("input validation", () => {
     it("returns 400 for missing systemPrompt", async () => {
-      const req = mockReq({ body: { userPrompt: "test" } });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(400);
-      expect(res._json.error).toBe("Invalid request");
+      const req = makeRequest({ userPrompt: "test" });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe("Invalid request");
     });
 
     it("returns 400 for non-string prompts", async () => {
-      const req = mockReq({ body: { systemPrompt: 123, userPrompt: "test" } });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(400);
+      const req = makeRequest({ systemPrompt: 123, userPrompt: "test" });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
     });
 
     it("returns 400 for empty prompts", async () => {
-      const req = mockReq({ body: { systemPrompt: "   ", userPrompt: "test" } });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(400);
-      expect(res._json.error).toBe("Missing required fields");
+      const req = makeRequest({ systemPrompt: "   ", userPrompt: "test" });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe("Missing required fields");
     });
 
     it("returns 400 for prompts exceeding max length", async () => {
-      const req = mockReq({
-        body: { systemPrompt: "a".repeat(5001), userPrompt: "test" },
-      });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(400);
-      expect(res._json.error).toBe("Request too large");
+      const req = makeRequest({ systemPrompt: "a".repeat(5001), userPrompt: "test" });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe("Request too large");
     });
 
     it("returns 413 for oversized body", async () => {
-      const req = mockReq({
-        body: { systemPrompt: "x".repeat(10000), userPrompt: "y".repeat(10000), extra: "z".repeat(5000) },
+      const req = makeRequest({
+        systemPrompt: "x".repeat(10000),
+        userPrompt: "y".repeat(10000),
+        extra: "z".repeat(5000),
       });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(413);
+      const res = await POST(req);
+      expect(res.status).toBe(413);
     });
   });
 
   describe("content moderation", () => {
     it("returns 400 for blocked content in userPrompt", async () => {
-      const req = mockReq({
-        body: { systemPrompt: "You are a chef.", userPrompt: "murder recipes" },
+      const req = makeRequest({
+        systemPrompt: "You are a chef.",
+        userPrompt: "murder recipes",
       });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(400);
-      expect(res._json.error).toBe("Please search for food-related terms.");
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe("Please search for food-related terms.");
     });
 
     it("returns 400 for blocked content in searchQuery", async () => {
-      const req = mockReq({
-        body: { systemPrompt: "You are a chef.", userPrompt: "Find recipes", searchQuery: "cocaine" },
+      const req = makeRequest({
+        systemPrompt: "You are a chef.",
+        userPrompt: "Find recipes",
+        searchQuery: "cocaine",
       });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(400);
+      const res = await POST(req);
+      expect(res.status).toBe(400);
     });
 
     it("returns 400 for blocked content in searchIngredient", async () => {
-      const req = mockReq({
-        body: { systemPrompt: "You are a chef.", userPrompt: "Find recipes", searchIngredient: "porn" },
+      const req = makeRequest({
+        systemPrompt: "You are a chef.",
+        userPrompt: "Find recipes",
+        searchIngredient: "porn",
       });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(400);
+      const res = await POST(req);
+      expect(res.status).toBe(400);
     });
   });
 
@@ -290,56 +244,52 @@ describe("handler", () => {
       const ip = "192.168.1.100";
 
       for (let i = 0; i < 10; i++) {
-        const req = mockReq({ headers: { "x-forwarded-for": ip } });
-        const res = mockRes();
-        await handler(req, res);
+        const req = makeRequest(defaultBody, { "x-forwarded-for": ip });
+        await POST(req);
       }
 
-      // 11th request should be rate limited
-      const req = mockReq({ headers: { "x-forwarded-for": ip } });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(429);
+      const req = makeRequest(defaultBody, { "x-forwarded-for": ip });
+      const res = await POST(req);
+      expect(res.status).toBe(429);
     });
   });
 
   describe("missing API key", () => {
     it("returns 500 when CEREBRAS_API_KEY is missing", async () => {
       delete process.env.CEREBRAS_API_KEY;
-      const req = mockReq();
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(500);
-      expect(res._json.error).toBe("Service temporarily unavailable");
+      const req = makeRequest(defaultBody);
+      const res = await POST(req);
+      expect(res.status).toBe(500);
+      const data = await res.json();
+      expect(data.error).toBe("Service temporarily unavailable");
     });
   });
 
   describe("security headers", () => {
     it("sets security headers on every response", async () => {
-      const req = mockReq({ method: "GET" });
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._headers["X-Content-Type-Options"]).toBe("nosniff");
-      expect(res._headers["X-Frame-Options"]).toBe("DENY");
-      expect(res._headers["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
-      expect(res._headers["Content-Type"]).toBe("application/json");
+      const req = makeRequest({ userPrompt: "test" });
+      const res = await POST(req);
+      expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+      expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+      expect(res.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
     });
   });
 
   describe("happy path", () => {
     it("returns merged recipes on valid request", async () => {
+      vi.advanceTimersByTime(61000);
       mockSuccessfulFetch();
-      const req = mockReq();
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(200);
-      expect(res._json.recipes).toBeDefined();
-      expect(res._json.recipes.length).toBeGreaterThan(0);
-      expect(res._json.recipes[0].source).toBe("AI Generated");
+      const req = makeRequest(defaultBody);
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.recipes).toBeDefined();
+      expect(data.recipes.length).toBeGreaterThan(0);
+      expect(data.recipes[0].source).toBe("AI Generated");
     });
 
     it("falls back to next model on 429", async () => {
-      vi.advanceTimersByTime(61000); // reset rate limit window
+      vi.advanceTimersByTime(61000);
       let callCount = 0;
       fetchMock.mockImplementation((url) => {
         if (url.includes("cerebras.ai")) {
@@ -360,11 +310,9 @@ describe("handler", () => {
         return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve("") });
       });
 
-      const req = mockReq();
-      const res = mockRes();
-      await handler(req, res);
-      expect(res._status).toBe(200);
-      // Should have called Cerebras twice (first model 429, second succeeds)
+      const req = makeRequest(defaultBody);
+      const res = await POST(req);
+      expect(res.status).toBe(200);
       const cerebrasCalls = fetchMock.mock.calls.filter(c => c[0].includes("cerebras.ai"));
       expect(cerebrasCalls.length).toBe(2);
     });

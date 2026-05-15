@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'app.theplateful',
   appName: 'The Plateful',
-  webDir: 'dist',
+  webDir: 'out',
   server: {
     androidScheme: 'https',
   },
