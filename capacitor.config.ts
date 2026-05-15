@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mealmuse.app',
-  appName: 'MealMuse',
+  appId: 'app.theplateful',
+  appName: 'The Plateful',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

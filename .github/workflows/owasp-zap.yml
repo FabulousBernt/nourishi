@@ -15,7 +15,7 @@ jobs:
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: "https://nourishi.vercel.app"
+          target: "https://theplateful.app"
           cmd_options: "-a"
 
       - name: Upload ZAP Report

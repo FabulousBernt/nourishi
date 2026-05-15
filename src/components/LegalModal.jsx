@@ -2,17 +2,17 @@ import { useEffect } from "react";
 
 const PAGES = {
   about: {
-    title: "About Nourishi",
+    title: "About The Plateful",
     content: () => (
       <>
         <p>
-          Nourishi is an AI-powered recipe discovery app designed to make cooking more
+          The Plateful is an AI-powered recipe discovery app designed to make cooking more
           accessible, creative, and fun. Here's what each section does:
         </p>
 
         <h3>Recipe Search</h3>
         <p>
-          Describe a dish, cuisine, or craving in your own words and Nourishi will generate
+          Describe a dish, cuisine, or craving in your own words and The Plateful will generate
           tailored recipe suggestions. Results combine real recipes from the web (via TheMealDB)
           with AI-generated recipes, each with full ingredients, step-by-step instructions, and
           estimated nutrition information.
@@ -20,7 +20,7 @@ const PAGES = {
 
         <h3>Pantry</h3>
         <p>
-          Add the ingredients you already have on hand, and Nourishi will craft recipes around
+          Add the ingredients you already have on hand, and The Plateful will craft recipes around
           them — helping you reduce food waste and skip the grocery run. You can add up to 20
           ingredients and get creative meal ideas based on what's in your kitchen.
         </p>
@@ -28,7 +28,7 @@ const PAGES = {
         <h3>Meal Plan</h3>
         <p>
           Choose a nutrition goal — from bulking and cutting to family-friendly or
-          Mediterranean — and Nourishi will generate a full 7-day meal plan with breakfast,
+          Mediterranean — and The Plateful will generate a full 7-day meal plan with breakfast,
           lunch, dinner, and snacks. Each plan includes calorie and macro estimates. You can
           export your plan as a printable PDF or import it into your calendar app.
         </p>
@@ -51,7 +51,7 @@ const PAGES = {
 
         <h3>Data We Collect</h3>
         <p>
-          Nourishi does <strong>not</strong> collect, store, or retain any personal data. We do
+          The Plateful does <strong>not</strong> collect, store, or retain any personal data. We do
           not use cookies, analytics trackers, or advertising pixels. There are no user accounts,
           no sign-ups, and no login required.
         </p>
@@ -93,7 +93,7 @@ const PAGES = {
 
         <h3>Children's Privacy</h3>
         <p>
-          Nourishi is not directed at children under 13. We do not knowingly collect any
+          The Plateful is not directed at children under 13. We do not knowingly collect any
           information from children.
         </p>
 
@@ -113,13 +113,13 @@ const PAGES = {
         <p><em>Last updated: May 2026</em></p>
 
         <p>
-          By using Nourishi, you agree to the following terms. If you do not agree, please
+          By using The Plateful, you agree to the following terms. If you do not agree, please
           discontinue use of the app.
         </p>
 
         <h3>1. Nature of the Service</h3>
         <p>
-          Nourishi is a free, AI-powered recipe discovery tool. It generates recipe suggestions,
+          The Plateful is a free, AI-powered recipe discovery tool. It generates recipe suggestions,
           ingredient lists, cooking instructions, nutrition estimates, and meal plans using
           artificial intelligence. The service is provided "as is" without warranties of any kind.
         </p>
@@ -128,7 +128,7 @@ const PAGES = {
         <p>
           All nutrition information (calories, protein, carbs, fat) is AI-estimated and
           approximate. It has not been verified by a registered dietitian or nutritionist.
-          Do not rely on Nourishi for medical dietary requirements, allergy management, or
+          Do not rely on The Plateful for medical dietary requirements, allergy management, or
           clinical nutrition planning. Always consult a qualified health professional for
           dietary advice.
         </p>
@@ -142,7 +142,7 @@ const PAGES = {
         </p>
 
         <h3>4. Acceptable Use</h3>
-        <p>You agree to use Nourishi only for its intended purpose: discovering recipes and meal
+        <p>You agree to use The Plateful only for its intended purpose: discovering recipes and meal
           planning. You may not:</p>
         <ul>
           <li>Submit queries containing violent, explicit, hateful, or illegal content.</li>
@@ -159,7 +159,7 @@ const PAGES = {
 
         <h3>6. Third-Party Services</h3>
         <p>
-          Nourishi relies on third-party services (Cerebras AI, TheMealDB) to generate content.
+          The Plateful relies on third-party services (Cerebras AI, TheMealDB) to generate content.
           We are not responsible for the availability, accuracy, or content produced by these
           services. Web recipes sourced from TheMealDB are attributed to their original authors.
         </p>
@@ -173,7 +173,7 @@ const PAGES = {
 
         <h3>8. Limitation of Liability</h3>
         <p>
-          Nourishi and its creators shall not be held liable for any damages arising from the use
+          The Plateful and its creators shall not be held liable for any damages arising from the use
           of this service, including but not limited to: adverse health effects from following
           AI-generated recipes or nutrition advice, food allergies or intolerances not accounted
           for by the AI, or any inaccuracies in recipe instructions or nutritional data.
@@ -181,7 +181,7 @@ const PAGES = {
 
         <h3>9. Changes to These Terms</h3>
         <p>
-          We reserve the right to modify these terms at any time. Continued use of Nourishi after
+          We reserve the right to modify these terms at any time. Continued use of The Plateful after
           changes constitutes acceptance of the updated terms.
         </p>
       </>

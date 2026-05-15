@@ -15,8 +15,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'MealMuse',
-        short_name: 'MealMuse',
+        name: 'The Plateful',
+        short_name: 'The Plateful',
         description: 'AI-powered recipe discovery & meal planning',
         theme_color: '#1B3D2F',
         background_color: '#FAF8F4',

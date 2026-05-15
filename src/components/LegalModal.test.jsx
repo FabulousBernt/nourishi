@@ -5,7 +5,7 @@ import LegalModal from "./LegalModal";
 describe("LegalModal", () => {
   it("renders About page with correct title", () => {
     render(<LegalModal page="about" onClose={() => {}} />);
-    expect(screen.getByText("About Nourishi")).toBeInTheDocument();
+    expect(screen.getByText("About The Plateful")).toBeInTheDocument();
   });
 
   it("renders Privacy Policy page", () => {
@@ -43,7 +43,7 @@ describe("LegalModal", () => {
   it("does NOT call onClose when modal content clicked", () => {
     const onClose = vi.fn();
     render(<LegalModal page="about" onClose={onClose} />);
-    const title = screen.getByText("About Nourishi");
+    const title = screen.getByText("About The Plateful");
     fireEvent.click(title);
     expect(onClose).not.toHaveBeenCalled();
   });

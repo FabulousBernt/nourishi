@@ -144,7 +144,7 @@ export default function App() {
           fontFamily: "var(--font-display)", fontSize: 38, margin: "0 0 14px", color: "var(--text)",
           fontWeight: 900, lineHeight: 1.1, letterSpacing: -0.5,
         }}>
-          Nourishi
+          The Plateful
         </h1>
         <div style={{
           width: 40, height: 3, background: "var(--gold)", borderRadius: 2,
@@ -179,7 +179,7 @@ export default function App() {
         {tab === "search" && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.6 }}>
-              Describe what you're craving and Nourishi will find the recipes.
+              Describe what you're craving and The Plateful will find the recipes.
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               <div style={{ flex: 1, position: "relative" }}>
@@ -231,7 +231,7 @@ export default function App() {
         {tab === "pantry" && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.6 }}>
-              Add the ingredients you have on hand, and Nourishi will craft recipes around them.
+              Add the ingredients you have on hand, and The Plateful will craft recipes around them.
             </p>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               <input
@@ -423,7 +423,7 @@ export default function App() {
             </button>
           ))}
         </div>
-        <span style={{ letterSpacing: 0.3 }}>Nourishi</span>
+        <span style={{ letterSpacing: 0.3 }}>The Plateful</span>
       </footer>
 
       {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}

@@ -10,7 +10,7 @@ beforeEach(() => {
 describe("App", () => {
   it("renders header and three tabs", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "Nourishi" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "The Plateful" })).toBeInTheDocument();
     expect(screen.getByText("Recipe Search")).toBeInTheDocument();
     expect(screen.getByText("Pantry")).toBeInTheDocument();
     expect(screen.getByText("Meal Plan")).toBeInTheDocument();
@@ -100,6 +100,6 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByText("About"));
-    expect(screen.getByText("About Nourishi")).toBeInTheDocument();
+    expect(screen.getByText("About The Plateful")).toBeInTheDocument();
   });
 });

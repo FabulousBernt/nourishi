@@ -191,7 +191,7 @@ describe("handler", () => {
     });
 
     it("rejects wrong origin when ALLOWED_ORIGIN is set", async () => {
-      process.env.ALLOWED_ORIGIN = "https://nourishi.vercel.app";
+      process.env.ALLOWED_ORIGIN = "https://theplateful.app";
       // Re-import to pick up env change — but since ALLOWED_ORIGINS is built at module load,
       // we test the handler's behavior with headers directly
       const req = mockReq({ headers: { origin: "https://evil.com" } });
