@@ -1,11 +1,16 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import IngredientTag from './components/IngredientTag';
-import RecipeCard from './components/RecipeCard';
-import MealPlanDay from './components/MealPlanDay';
-import LoadingPulse from './components/LoadingPulse';
-import { exportMealPlanPDF, exportMealPlanICS } from './utils/mealPlanExport';
-import { checkContent } from './utils/contentFilter';
-import LegalModal from './components/LegalModal';
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import IngredientTag from "../src/components/IngredientTag";
+import RecipeCard from "../src/components/RecipeCard";
+import MealPlanDay from "../src/components/MealPlanDay";
+import LoadingPulse from "../src/components/LoadingPulse";
+import Header from "../src/components/Header";
+import Footer from "../src/components/Footer";
+import { exportMealPlanPDF, exportMealPlanICS } from "../src/utils/mealPlanExport";
+import { checkContent } from "../src/utils/contentFilter";
+import { makeRecipeSlug } from "../src/lib/slugify";
+import LegalModal from "../src/components/LegalModal";
 
 const TABS = [
   { id: "search", label: "Recipe Search", icon: "🔍" },
@@ -24,8 +29,7 @@ const PLAN_GOALS = [
   { id: "quick", label: "< 30 Min", icon: "⏱", desc: "Fast meals, under 30 minutes" },
 ];
 
-
-export default function App() {
+export default function HomePage() {
   const [tab, setTab] = useState("search");
   const [query, setQuery] = useState("");
   const [ingredients, setIngredients] = useState([]);
@@ -40,6 +44,20 @@ export default function App() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setResults(null); setError(null); }, [tab]);
 
+  // Store recipes in localStorage for recipe page hydration
+  useEffect(() => {
+    if (results && (tab === "search" || tab === "pantry")) {
+      const recipeMap = {};
+      results.forEach(r => {
+        const slug = makeRecipeSlug(r);
+        recipeMap[slug] = r;
+      });
+      try {
+        localStorage.setItem("plateful_recipes", JSON.stringify(recipeMap));
+      } catch (_e) { /* localStorage full or unavailable */ }
+    }
+  }, [results, tab]);
+
   const callAI = useCallback(async (systemPrompt, userPrompt, { searchQuery, searchIngredient } = {}) => {
     setLoading(true);
     setError(null);
@@ -52,11 +70,9 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `API error ${res.status}`);
-      // New format returns { recipes: [...] } with merged results
       if (data.recipes) {
         setResults(data.recipes);
       } else {
-        // Fallback for meal plan (still uses text format)
         const text = (data.text || "").replace(/```json?\n?/g, "").replace(/```/g, "");
         const jsonMatch = text.match(/\[[\s\S]*\]/);
         if (!jsonMatch) throw new Error("Could not parse results");
@@ -134,26 +150,7 @@ export default function App() {
       padding: "0 0 100px",
       position: "relative",
     }}>
-      {/* Header */}
-      <header style={{
-        padding: "44px 24px 24px",
-        textAlign: "center",
-        position: "relative",
-      }}>
-        <h1 style={{
-          fontFamily: "var(--font-display)", fontSize: 38, margin: "0 0 14px", color: "var(--text)",
-          fontWeight: 900, lineHeight: 1.1, letterSpacing: -0.5,
-        }}>
-          The Plateful
-        </h1>
-        <div style={{
-          width: 40, height: 3, background: "var(--gold)", borderRadius: 2,
-          margin: "0 auto 12px",
-        }} />
-        <span style={{ fontSize: 12, fontFamily: "var(--font-body)", fontWeight: 600, color: "var(--accent)", letterSpacing: 0.5 }}>
-          AI-Powered Recipe Discovery
-        </span>
-      </header>
+      <Header />
 
       {/* Tab Nav */}
       <nav style={{ display: "flex", gap: 6, padding: "0 16px", marginBottom: 24 }}>
@@ -323,9 +320,7 @@ export default function App() {
         )}
 
         {/* Loading */}
-        {loading && (
-          <LoadingPulse />
-        )}
+        {loading && <LoadingPulse />}
 
         {/* Error */}
         {error && (
@@ -351,7 +346,9 @@ export default function App() {
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 4px", color: "var(--text)" }}>
               {tab === "pantry" ? "Here's what you can make" : "Recipes Found"}
             </h2>
-            {results.map((r, i) => <RecipeCard key={i} recipe={r} index={i} />)}
+            {results.map((r, i) => (
+              <RecipeCard key={i} recipe={r} index={i} slug={makeRecipeSlug(r)} />
+            ))}
           </div>
         )}
 
@@ -393,38 +390,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer style={{
-        padding: "32px 16px 24px",
-        textAlign: "center",
-        fontSize: 12,
-        fontFamily: "var(--font-body)",
-        color: "var(--text-muted)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 10 }}>
-          {[
-            { id: "about", label: "About" },
-            { id: "privacy", label: "Privacy Policy" },
-            { id: "terms", label: "Terms of Service" },
-          ].map(link => (
-            <button
-              key={link.id}
-              onClick={() => setLegalPage(link.id)}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: 12, fontFamily: "var(--font-body)", fontWeight: 600,
-                color: "var(--text-muted)", padding: "4px 0",
-                borderBottom: "1px solid transparent", transition: "all 0.15s",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderBottomColor = "var(--accent)"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderBottomColor = "transparent"; }}
-            >
-              {link.label}
-            </button>
-          ))}
-        </div>
-        <span style={{ letterSpacing: 0.3 }}>The Plateful</span>
-      </footer>
+      <Footer onLegalPage={setLegalPage} />
 
       {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
     </div>

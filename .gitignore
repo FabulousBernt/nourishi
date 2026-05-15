@@ -3,6 +3,12 @@ node_modules/
 
 # Build output
 dist/
+.next/
+out/
+
+# Generated PWA service worker
+public/sw.js
+public/workbox-*.js
 
 # Capacitor native projects (generated, not committed by default)
 # Uncomment these if you want to track native projects in git:

@@ -6,7 +6,7 @@ import globals from "globals";
 export default [
   js.configs.recommended,
   {
-    files: ["src/**/*.{js,jsx}"],
+    files: ["src/**/*.{js,jsx}", "app/**/*.{js,jsx}"],
     plugins: {
       react,
       "react-hooks": reactHooks,
@@ -28,17 +28,17 @@ export default [
     },
   },
   {
-    files: ["api/**/*.js"],
+    files: ["app/api/**/*.js", "src/lib/api-helpers.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
-      globals: { ...globals.node },
+      globals: { ...globals.node, fetch: "readonly", Response: "readonly", Request: "readonly" },
     },
     rules: {
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
   },
   {
-    ignores: ["dist/", "node_modules/", "ios/", "android/", "*.config.js"],
+    ignores: ["dist/", ".next/", "out/", "node_modules/", "ios/", "android/", "*.config.js", "public/sw.js", "public/workbox-*.js", "api/"],
   },
 ];
