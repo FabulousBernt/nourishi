@@ -23,8 +23,8 @@ AI-powered recipe discovery and meal planning app built with React, Vite, and Ce
 
 ```bash
 # Clone the repo
-git clone https://github.com/FabulousBernt/nourishi.git
-cd nourishi
+git clone https://github.com/FabulousBernt/The-Plateful.git
+cd The-Plateful
 
 # Install dependencies
 npm install
