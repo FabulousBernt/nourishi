@@ -10,6 +10,7 @@ vi.mock("next/link", () => ({
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  sessionStorage.clear();
 });
 
 describe("HomePage", () => {

@@ -64,6 +64,41 @@ export default function RecipeCard({ recipe, index, slug }) {
         </div>
       </button>
 
+      {/* Action buttons — always visible */}
+      {(slug || (recipe.sourceUrl && /^https?:\/\//i.test(recipe.sourceUrl))) && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "0 20px 16px" }}>
+          {slug && (
+            <Link
+              href={`/recipe/${slug}`}
+              style={{
+                display: "inline-block", padding: "10px 16px",
+                background: "var(--accent)", borderRadius: 10, textDecoration: "none",
+                fontSize: 13, fontFamily: "var(--font-body)", fontWeight: 700, color: "#FFFFFF",
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >
+              View Full Recipe
+            </Link>
+          )}
+          {recipe.sourceUrl && /^https?:\/\//i.test(recipe.sourceUrl) && (
+            <a
+              href={recipe.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block", padding: "10px 16px",
+                background: "#e8f4fd", borderRadius: 10, textDecoration: "none",
+                fontSize: 13, fontFamily: "var(--font-body)", fontWeight: 700, color: "#1a73e8",
+              }}
+            >
+              View Original ↗
+            </a>
+          )}
+        </div>
+      )}
+
       {open && (
         <div style={{ padding: "0 20px 20px", animation: "fadeIn 0.3s ease" }}>
           <div style={{ height: 1, background: "var(--border-light)", marginBottom: 16 }} />
@@ -85,38 +120,6 @@ export default function RecipeCard({ recipe, index, slug }) {
               </ol>
             </div>
           )}
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-            {slug && (
-              <Link
-                href={`/recipe/${slug}`}
-                style={{
-                  display: "inline-block", padding: "10px 16px",
-                  background: "var(--accent)", borderRadius: 10, textDecoration: "none",
-                  fontSize: 13, fontFamily: "var(--font-body)", fontWeight: 700, color: "#FFFFFF",
-                  transition: "opacity 0.15s",
-                }}
-                onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
-                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-              >
-                View Full Recipe
-              </Link>
-            )}
-            {recipe.sourceUrl && /^https?:\/\//i.test(recipe.sourceUrl) && (
-              <a
-                href={recipe.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-block", padding: "10px 16px",
-                  background: "#e8f4fd", borderRadius: 10, textDecoration: "none",
-                  fontSize: 13, fontFamily: "var(--font-body)", fontWeight: 700, color: "#1a73e8",
-                }}
-              >
-                View Original ↗
-              </a>
-            )}
-          </div>
         </div>
       )}
     </div>

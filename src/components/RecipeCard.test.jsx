@@ -76,23 +76,25 @@ describe("RecipeCard", () => {
     expect(screen.queryByText("Ingredients")).not.toBeInTheDocument();
   });
 
-  it("does not render source link for javascript: URL", async () => {
-    const user = userEvent.setup();
+  it("does not render source link for javascript: URL", () => {
     const recipe = { ...baseRecipe, sourceUrl: "javascript:alert(1)" };
     render(<RecipeCard recipe={recipe} index={0} />);
-    await user.click(screen.getByText("Spaghetti Carbonara"));
     expect(screen.queryByText(/View Original/)).not.toBeInTheDocument();
   });
 
-  it("renders source link with security attributes for valid URL", async () => {
-    const user = userEvent.setup();
+  it("renders source link with security attributes for valid URL", () => {
     const recipe = { ...baseRecipe, sourceUrl: "https://example.com/recipe" };
     render(<RecipeCard recipe={recipe} index={0} />);
-    await user.click(screen.getByText("Spaghetti Carbonara"));
     const link = screen.getByRole("link", { name: /View Original/ });
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("href", "https://example.com/recipe");
+  });
+
+  it("shows View Full Recipe button on collapsed card when slug is provided", () => {
+    render(<RecipeCard recipe={baseRecipe} index={0} slug="spaghetti-carbonara-abc123" />);
+    const link = screen.getByRole("link", { name: /View Full Recipe/ });
+    expect(link).toHaveAttribute("href", "/recipe/spaghetti-carbonara-abc123");
   });
 
   it("shows AI badge for AI-generated recipes", () => {

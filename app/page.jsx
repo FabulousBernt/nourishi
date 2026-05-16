@@ -40,9 +40,40 @@ export default function HomePage() {
   const [error, setError] = useState(null);
   const [legalPage, setLegalPage] = useState(null);
   const inputRef = useRef(null);
+  const [hydrated, setHydrated] = useState(false);
 
+  // Restore state from sessionStorage after hydration
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setResults(null); setError(null); }, [tab]);
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("plateful_session");
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.tab) setTab(s.tab);
+        if (s.query) setQuery(s.query);
+        if (s.ingredients?.length) setIngredients(s.ingredients);
+        if (s.results) setResults(s.results);
+      }
+    } catch (_e) { /* sessionStorage unavailable */ }
+    setHydrated(true);
+  }, []);
+
+  // Save state to sessionStorage — `hydrated` is a state variable so this
+  // effect won't fire until the re-render after restore has applied all values
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      sessionStorage.setItem("plateful_session", JSON.stringify({ tab, results, query, ingredients }));
+    } catch (_e) { /* sessionStorage full or unavailable */ }
+  }, [hydrated, tab, results, query, ingredients]);
+
+  const switchTab = (newTab) => {
+    if (newTab !== tab) {
+      setResults(null);
+      setError(null);
+    }
+    setTab(newTab);
+  };
 
   // Store recipes in localStorage for recipe page hydration
   useEffect(() => {
@@ -155,7 +186,7 @@ export default function HomePage() {
       {/* Tab Nav */}
       <nav style={{ display: "flex", gap: 6, padding: "0 16px", marginBottom: 24 }}>
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
+          <button key={t.id} onClick={() => switchTab(t.id)} style={{
             flex: 1, padding: "14px 8px 12px", borderRadius: 16,
             border: tab === t.id ? "1.5px solid var(--accent)" : "1.5px solid var(--border-light)",
             background: tab === t.id ? "var(--accent)" : "var(--surface)",
