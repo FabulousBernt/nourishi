@@ -39,6 +39,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [legalPage, setLegalPage] = useState(null);
+  const [includeAI, setIncludeAI] = useState(true);
   const inputRef = useRef(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -53,6 +54,7 @@ export default function HomePage() {
         if (s.query) setQuery(s.query);
         if (s.ingredients?.length) setIngredients(s.ingredients);
         if (s.results) setResults(s.results);
+        if (s.includeAI !== undefined) setIncludeAI(s.includeAI);
       }
     } catch (_e) { /* sessionStorage unavailable */ }
     setHydrated(true);
@@ -63,9 +65,9 @@ export default function HomePage() {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      sessionStorage.setItem("plateful_session", JSON.stringify({ tab, results, query, ingredients }));
+      sessionStorage.setItem("plateful_session", JSON.stringify({ tab, results, query, ingredients, includeAI }));
     } catch (_e) { /* sessionStorage full or unavailable */ }
-  }, [hydrated, tab, results, query, ingredients]);
+  }, [hydrated, tab, results, query, ingredients, includeAI]);
 
   const switchTab = (newTab) => {
     if (newTab !== tab) {
@@ -97,7 +99,7 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ systemPrompt, userPrompt, searchQuery, searchIngredient }),
+        body: JSON.stringify({ systemPrompt, userPrompt, searchQuery, searchIngredient, includeAI }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `API error ${res.status}`);
@@ -114,7 +116,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [includeAI]);
 
   const sanitizeInput = (str, maxLen = 200) =>
     str.replace(/[^\w\s,.'"-]/g, "").slice(0, maxLen).trim();
@@ -252,6 +254,25 @@ export default function HomePage() {
                 Go
               </button>
             </div>
+            <label style={{
+              display: "flex", alignItems: "center", gap: 10, marginTop: 12,
+              fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text-muted)",
+              cursor: "pointer", userSelect: "none",
+            }}>
+              <span style={{
+                display: "inline-block", width: 40, height: 22, borderRadius: 11,
+                background: includeAI ? "var(--accent)" : "var(--border-light)",
+                position: "relative", transition: "background 0.2s",
+              }}>
+                <span style={{
+                  position: "absolute", top: 2, left: includeAI ? 20 : 2,
+                  width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                  transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                }} />
+              </span>
+              <input type="checkbox" checked={includeAI} onChange={e => setIncludeAI(e.target.checked)} style={{ display: "none" }} />
+              Include AI-generated recipes
+            </label>
           </div>
         )}
 
@@ -300,6 +321,27 @@ export default function HomePage() {
                 onMouseLeave={e => e.currentTarget.style.background = "none"}
                 >Clear all</button>
               </div>
+            )}
+            {ingredients.length > 0 && (
+              <label style={{
+                display: "flex", alignItems: "center", gap: 10, marginBottom: 12,
+                fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text-muted)",
+                cursor: "pointer", userSelect: "none",
+              }}>
+                <span style={{
+                  display: "inline-block", width: 40, height: 22, borderRadius: 11,
+                  background: includeAI ? "var(--accent)" : "var(--border-light)",
+                  position: "relative", transition: "background 0.2s",
+                }}>
+                  <span style={{
+                    position: "absolute", top: 2, left: includeAI ? 20 : 2,
+                    width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                    transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                  }} />
+                </span>
+                <input type="checkbox" checked={includeAI} onChange={e => setIncludeAI(e.target.checked)} style={{ display: "none" }} />
+                Include AI-generated recipes
+              </label>
             )}
             {ingredients.length > 0 && (
               <button onClick={searchByIngredients} disabled={loading} style={{
