@@ -1,5 +1,39 @@
 import { transformMealDBRecipe } from "../../../src/lib/api-helpers";
+import { getDb } from "../../../src/lib/db";
 import RecipePageClient from "./RecipePageClient";
+
+// Try to fetch recipe from the database first
+async function fetchFromDB(slug) {
+  try {
+    const sql = getDb();
+    const [row] = await sql`SELECT * FROM recipes WHERE slug = ${slug} LIMIT 1`;
+    if (!row) return null;
+    return {
+      name: row.name,
+      description: row.description,
+      cuisine: row.cuisine,
+      source: "Saved",
+      time: row.time,
+      servings: row.servings,
+      difficulty: row.difficulty,
+      calories: row.calories,
+      protein: row.protein,
+      carbs: row.carbs,
+      fat: row.fat,
+      isApprox: row.is_approx,
+      ingredients: typeof row.ingredients === "string" ? JSON.parse(row.ingredients) : row.ingredients,
+      instructions: typeof row.instructions === "string" ? JSON.parse(row.instructions) : row.instructions,
+      thumbnail: row.thumbnail,
+      sourceUrl: row.source_url,
+      mealDBId: row.mealdb_id,
+      ratingAvg: row.rating_count > 0 ? row.rating_sum / row.rating_count : 0,
+      ratingCount: row.rating_count,
+    };
+  } catch (e) {
+    console.error("DB recipe fetch error:", e.message);
+    return null;
+  }
+}
 
 // Try to fetch a TheMealDB recipe by extracting an ID from the slug
 async function fetchMealDBRecipe(slug) {
@@ -19,6 +53,13 @@ async function fetchMealDBRecipe(slug) {
   } catch {
     return null;
   }
+}
+
+// Fetch recipe: DB first, then TheMealDB fallback
+async function fetchRecipe(slug) {
+  const dbRecipe = await fetchFromDB(slug);
+  if (dbRecipe) return dbRecipe;
+  return fetchMealDBRecipe(slug);
 }
 
 function parseTime(timeStr) {
@@ -71,7 +112,7 @@ function RecipeJsonLd({ recipe }) {
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const recipe = await fetchMealDBRecipe(slug);
+  const recipe = await fetchRecipe(slug);
 
   if (recipe) {
     return {
@@ -106,7 +147,7 @@ export async function generateMetadata({ params }) {
 
 export default async function RecipePage({ params }) {
   const { slug } = await params;
-  const serverRecipe = await fetchMealDBRecipe(slug);
+  const serverRecipe = await fetchRecipe(slug);
 
   return (
     <>
