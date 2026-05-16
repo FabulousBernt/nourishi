@@ -4,6 +4,7 @@ import {
   isBlockedContent,
   transformMealDBRecipe,
 } from "../../../src/lib/api-helpers.js";
+import { getDb } from "../../../src/lib/db.js";
 
 export const maxDuration = 60;
 
@@ -85,6 +86,57 @@ async function searchMealDB(query) {
     return data.meals.slice(0, 4).map(transformMealDBRecipe);
   } catch (e) {
     console.error("TheMealDB search error:", e.message);
+    return [];
+  }
+}
+
+// Search saved recipes in the database
+async function searchDatabase(query, ingredient) {
+  try {
+    const sql = getDb();
+    let rows;
+    if (query) {
+      const pattern = `%${query}%`;
+      rows = await sql`
+        SELECT * FROM recipes
+        WHERE name ILIKE ${pattern} OR cuisine ILIKE ${pattern} OR description ILIKE ${pattern}
+        ORDER BY rating_count DESC, created_at DESC
+        LIMIT 6
+      `;
+    } else if (ingredient) {
+      const pattern = `%${ingredient}%`;
+      rows = await sql`
+        SELECT * FROM recipes
+        WHERE ingredients::text ILIKE ${pattern}
+        ORDER BY rating_count DESC, created_at DESC
+        LIMIT 6
+      `;
+    } else {
+      return [];
+    }
+    return rows.map(r => ({
+      name: r.name,
+      description: r.description,
+      cuisine: r.cuisine,
+      source: "Saved",
+      time: r.time,
+      servings: r.servings,
+      difficulty: r.difficulty,
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fat,
+      isApprox: r.is_approx,
+      ingredients: typeof r.ingredients === "string" ? JSON.parse(r.ingredients) : r.ingredients,
+      instructions: typeof r.instructions === "string" ? JSON.parse(r.instructions) : r.instructions,
+      thumbnail: r.thumbnail,
+      sourceUrl: r.source_url,
+      mealDBId: r.mealdb_id,
+      ratingAvg: r.rating_count > 0 ? r.rating_sum / r.rating_count : 0,
+      ratingCount: r.rating_count,
+    }));
+  } catch (e) {
+    console.error("Database search error:", e.message);
     return [];
   }
 }
@@ -186,19 +238,21 @@ export async function POST(request) {
     return jsonResponse({ error: "Too many requests. Please wait a moment and try again." }, 429, corsHeaders);
   }
 
-  const { systemPrompt, userPrompt, searchQuery, searchIngredient } = body || {};
+  const { systemPrompt, userPrompt, searchQuery, searchIngredient, includeAI = true } = body || {};
 
-  // Type validation
-  if (typeof systemPrompt !== "string" || typeof userPrompt !== "string") {
+  // Type validation — systemPrompt and userPrompt required only when AI is enabled
+  if (includeAI && (typeof systemPrompt !== "string" || typeof userPrompt !== "string")) {
     return jsonResponse({ error: "Invalid request" }, 400, corsHeaders);
   }
 
-  // Length validation
-  if (!systemPrompt.trim() || !userPrompt.trim()) {
-    return jsonResponse({ error: "Missing required fields" }, 400, corsHeaders);
-  }
-  if (systemPrompt.length > MAX_PROMPT_LENGTH || userPrompt.length > MAX_PROMPT_LENGTH) {
-    return jsonResponse({ error: "Request too large" }, 400, corsHeaders);
+  // Length validation (only when AI is enabled)
+  if (includeAI) {
+    if (!systemPrompt.trim() || !userPrompt.trim()) {
+      return jsonResponse({ error: "Missing required fields" }, 400, corsHeaders);
+    }
+    if (systemPrompt.length > MAX_PROMPT_LENGTH || userPrompt.length > MAX_PROMPT_LENGTH) {
+      return jsonResponse({ error: "Request too large" }, 400, corsHeaders);
+    }
   }
 
   // Server-side sanitization of user-facing search fields
@@ -211,34 +265,57 @@ export async function POST(request) {
   }
 
   const apiKey = process.env.CEREBRAS_API_KEY;
-  if (!apiKey) {
+  if (includeAI && !apiKey) {
     return jsonResponse({ error: "Service temporarily unavailable" }, 500, corsHeaders);
   }
 
-  // Run TheMealDB search in parallel with AI generation
+  // Run DB search, TheMealDB search, and AI generation in parallel
+  const dbPromise = searchDatabase(cleanSearchQuery, cleanSearchIngredient);
+
   const mealDBPromise = cleanSearchQuery
     ? searchMealDB(cleanSearchQuery)
     : cleanSearchIngredient
       ? searchMealDBByIngredient(cleanSearchIngredient)
       : Promise.resolve([]);
 
-  // Try each model in the chain, falling back on rate limit or error
+  // Only run AI if enabled
   let aiResult = null;
-  for (const model of MODEL_CHAIN) {
-    const result = await callLLM(apiKey, model, systemPrompt, userPrompt);
-    if (result.ok) {
-      aiResult = result;
-      break;
+  if (includeAI && apiKey) {
+    for (const model of MODEL_CHAIN) {
+      const result = await callLLM(apiKey, model, systemPrompt, userPrompt);
+      if (result.ok) {
+        aiResult = result;
+        break;
+      }
+      if (!result.retryable) break;
+      console.log(`${model} rate limited (${result.status}), trying next model...`);
     }
-    if (!result.retryable) break;
-    console.log(`${model} rate limited (${result.status}), trying next model...`);
   }
 
-  // Wait for TheMealDB results, then estimate nutrition with AI in parallel
-  const mealDBResults = await mealDBPromise;
-  const nutritionPromise = mealDBResults.length > 0
-    ? estimateNutritionWithAI(apiKey, mealDBResults)
-    : Promise.resolve([]);
+  // Wait for DB and TheMealDB results
+  const [dbResults, mealDBResults] = await Promise.all([dbPromise, mealDBPromise]);
+
+  // Estimate nutrition for TheMealDB recipes (only if we have an API key)
+  const enrichedMealDB = mealDBResults.length > 0 && apiKey
+    ? await estimateNutritionWithAI(apiKey, mealDBResults)
+    : mealDBResults;
+
+  // Deduplicate: remove TheMealDB results that are already saved in DB
+  const dbMealDBIds = new Set(dbResults.filter(r => r.mealDBId).map(r => r.mealDBId));
+  const dbNames = new Set(dbResults.map(r => r.name.toLowerCase()));
+  const uniqueMealDB = enrichedMealDB.filter(r => {
+    if (r.mealDBId && dbMealDBIds.has(r.mealDBId)) return false;
+    if (dbNames.has(r.name.toLowerCase())) return false;
+    return true;
+  });
+
+  // Interleave DB + TheMealDB results (mixed, not sorted)
+  const dbAndWeb = [];
+  const maxWebLen = Math.max(dbResults.length, uniqueMealDB.length);
+  for (let i = 0; i < maxWebLen; i++) {
+    if (i < dbResults.length) dbAndWeb.push(dbResults[i]);
+    if (i < uniqueMealDB.length) dbAndWeb.push(uniqueMealDB[i]);
+  }
 
   // Parse AI results and mark with source
   let aiRecipes = [];
@@ -254,16 +331,8 @@ export async function POST(request) {
     }
   }
 
-  // Wait for nutrition estimates
-  const enrichedMealDB = await nutritionPromise;
-
-  // Merge results: interleave TheMealDB and AI recipes
-  const combined = [];
-  const maxLen = Math.max(enrichedMealDB.length, aiRecipes.length);
-  for (let i = 0; i < maxLen; i++) {
-    if (i < enrichedMealDB.length) combined.push(enrichedMealDB[i]);
-    if (i < aiRecipes.length) combined.push(aiRecipes[i]);
-  }
+  // Combined: DB+TheMealDB first, then AI after
+  const combined = [...dbAndWeb, ...aiRecipes];
 
   if (combined.length === 0) {
     return jsonResponse({ error: "No recipes found. Please try a different search." }, 502, corsHeaders);

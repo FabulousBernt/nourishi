@@ -3,6 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import MacroBar from "../../../src/components/MacroBar";
+import StarRating from "../../../src/components/StarRating";
+
+const SOURCE_BADGE = {
+  "Saved": { bg: "#e8f5e9", color: "#2e7d32", label: "\u2713 Saved" },
+  "AI Generated": { bg: "var(--accent-light)", color: "var(--accent)", label: "\u2726 AI" },
+  "TheMealDB": { bg: "#e8f4fd", color: "#1a73e8", label: "\ud83c\udf10 Web" },
+};
 
 export default function RecipePageClient({ slug, serverRecipe }) {
   const [recipe, setRecipe] = useState(serverRecipe || null);
@@ -95,13 +102,13 @@ export default function RecipePageClient({ slug, serverRecipe }) {
           }}>
             {recipe.cuisine || "Recipe"}
           </span>
-          {recipe.source && (
+          {recipe.source && SOURCE_BADGE[recipe.source] && (
             <span style={{
               fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10, letterSpacing: 0.3,
-              background: recipe.source === "AI Generated" ? "var(--accent-light)" : "#e8f4fd",
-              color: recipe.source === "AI Generated" ? "var(--accent)" : "#1a73e8",
+              background: SOURCE_BADGE[recipe.source].bg,
+              color: SOURCE_BADGE[recipe.source].color,
             }}>
-              {recipe.source === "AI Generated" ? "✦ AI" : "🌐 Web"}
+              {SOURCE_BADGE[recipe.source].label}
             </span>
           )}
         </div>
@@ -134,6 +141,14 @@ export default function RecipePageClient({ slug, serverRecipe }) {
             isApprox={recipe.isApprox}
           />
         )}
+
+        {/* Star Rating */}
+        <StarRating
+          slug={slug}
+          recipe={recipe}
+          initialRating={recipe.ratingAvg || 0}
+          initialCount={recipe.ratingCount || 0}
+        />
 
         {/* Ingredients */}
         {recipe.ingredients && recipe.ingredients.length > 0 && (

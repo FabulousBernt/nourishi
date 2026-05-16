@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import MacroBar from './MacroBar';
+import StarRating from './StarRating';
+
+const SOURCE_BADGE = {
+  "Saved": { bg: "#e8f5e9", color: "#2e7d32", label: "✓ Saved" },
+  "AI Generated": { bg: "var(--accent-light)", color: "var(--accent)", label: "✦ AI" },
+  "TheMealDB": { bg: "#e8f4fd", color: "#1a73e8", label: "🌐 Web" },
+};
 
 export default function RecipeCard({ recipe, index, slug }) {
   const [open, setOpen] = useState(false);
@@ -28,14 +35,14 @@ export default function RecipeCard({ recipe, index, slug }) {
               <span style={{ fontSize: 13, color: "var(--accent)", fontFamily: "var(--font-body)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
                 {recipe.cuisine || "Recipe"}
               </span>
-              {recipe.source && (
+              {recipe.source && SOURCE_BADGE[recipe.source] && (
                 <span style={{
                   fontSize: 10, fontFamily: "var(--font-body)", fontWeight: 600,
                   padding: "2px 8px", borderRadius: 10, letterSpacing: 0.3,
-                  background: recipe.source === "AI Generated" ? "var(--accent-light)" : "#e8f4fd",
-                  color: recipe.source === "AI Generated" ? "var(--accent)" : "#1a73e8",
+                  background: SOURCE_BADGE[recipe.source].bg,
+                  color: SOURCE_BADGE[recipe.source].color,
                 }}>
-                  {recipe.source === "AI Generated" ? "✦ AI" : "🌐 Web"}
+                  {SOURCE_BADGE[recipe.source].label}
                 </span>
               )}
             </div>
@@ -98,6 +105,16 @@ export default function RecipeCard({ recipe, index, slug }) {
           )}
         </div>
       )}
+
+      {/* Star rating — always visible */}
+      <div style={{ padding: "0 20px 16px" }}>
+        <StarRating
+          slug={slug}
+          recipe={recipe}
+          initialRating={recipe.ratingAvg || 0}
+          initialCount={recipe.ratingCount || 0}
+        />
+      </div>
 
       {open && (
         <div style={{ padding: "0 20px 20px", animation: "fadeIn 0.3s ease" }}>
