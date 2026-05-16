@@ -39,6 +39,6 @@ export default [
     },
   },
   {
-    ignores: ["dist/", ".next/", "out/", "node_modules/", "ios/", "android/", "*.config.js", "public/sw.js", "public/workbox-*.js", "api/"],
+    ignores: ["dist/", ".next/", ".vercel/", "out/", "node_modules/", "ios/", "android/", "*.config.js", "public/sw.js", "public/workbox-*.js", "api/"],
   },
 ];

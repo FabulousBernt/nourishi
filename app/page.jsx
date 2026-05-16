@@ -43,12 +43,12 @@ export default function HomePage() {
   const [hydrated, setHydrated] = useState(false);
 
   // Restore state from sessionStorage after hydration
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem("plateful_session");
       if (saved) {
         const s = JSON.parse(saved);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (s.tab) setTab(s.tab);
         if (s.query) setQuery(s.query);
         if (s.ingredients?.length) setIngredients(s.ingredients);
