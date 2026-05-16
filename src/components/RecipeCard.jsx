@@ -4,7 +4,7 @@ import MacroBar from './MacroBar';
 import StarRating from './StarRating';
 
 const SOURCE_BADGE = {
-  "Saved": { bg: "#e8f5e9", color: "#2e7d32", label: "✓ Saved" },
+  "Saved": { bg: "#1B3D2F", color: "#FAF8F4", label: "Plateful", icon: true },
   "AI Generated": { bg: "var(--accent-light)", color: "var(--accent)", label: "✦ AI" },
   "TheMealDB": { bg: "#e8f4fd", color: "#1a73e8", label: "🌐 Web" },
 };
@@ -41,15 +41,35 @@ export default function RecipeCard({ recipe, index, slug }) {
                   padding: "2px 8px", borderRadius: 10, letterSpacing: 0.3,
                   background: SOURCE_BADGE[recipe.source].bg,
                   color: SOURCE_BADGE[recipe.source].color,
+                  display: "inline-flex", alignItems: "center", gap: 3,
                 }}>
+                  {SOURCE_BADGE[recipe.source].icon && (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="12" height="12">
+                      <circle cx="16" cy="16" r="10" fill="none" stroke="#FAF8F4" strokeWidth="1.5"/>
+                      <circle cx="16" cy="16" r="7" fill="none" stroke="#FAF8F4" strokeWidth="0.8" opacity="0.5"/>
+                      <g stroke="#FAF8F4" strokeWidth="1.3" strokeLinecap="round" fill="none">
+                        <line x1="13" y1="11" x2="13" y2="21"/><line x1="11" y1="11" x2="11" y2="15"/>
+                        <line x1="15" y1="11" x2="15" y2="15"/><line x1="11" y1="15" x2="15" y2="15"/>
+                      </g>
+                      <g stroke="#FAF8F4" strokeWidth="1.3" strokeLinecap="round" fill="none">
+                        <line x1="20" y1="11" x2="20" y2="21"/>
+                      </g>
+                    </svg>
+                  )}
                   {SOURCE_BADGE[recipe.source].label}
                 </span>
               )}
             </div>
-            <h3 style={{ margin: "6px 0 8px", fontSize: 19, fontFamily: "var(--font-display)", fontWeight: 700, lineHeight: 1.25 }}>
+            <h3 style={{ margin: "6px 0 4px", fontSize: 19, fontFamily: "var(--font-display)", fontWeight: 700, lineHeight: 1.25 }}>
               {recipe.name}
             </h3>
-            <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", fontFamily: "var(--font-body)", lineHeight: 1.5 }}>
+            <StarRating
+              slug={slug}
+              recipe={recipe}
+              initialRating={recipe.ratingAvg || 0}
+              initialCount={recipe.ratingCount || 0}
+            />
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: "var(--text-muted)", fontFamily: "var(--font-body)", lineHeight: 1.5 }}>
               {recipe.description}
             </p>
             <div style={{ display: "flex", gap: 16, marginTop: 10, fontSize: 13, color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
@@ -105,16 +125,6 @@ export default function RecipeCard({ recipe, index, slug }) {
           )}
         </div>
       )}
-
-      {/* Star rating — always visible */}
-      <div style={{ padding: "0 20px 16px" }}>
-        <StarRating
-          slug={slug}
-          recipe={recipe}
-          initialRating={recipe.ratingAvg || 0}
-          initialCount={recipe.ratingCount || 0}
-        />
-      </div>
 
       {open && (
         <div style={{ padding: "0 20px 20px", animation: "fadeIn 0.3s ease" }}>

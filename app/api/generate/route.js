@@ -238,7 +238,7 @@ export async function POST(request) {
     return jsonResponse({ error: "Too many requests. Please wait a moment and try again." }, 429, corsHeaders);
   }
 
-  const { systemPrompt, userPrompt, searchQuery, searchIngredient, includeAI = true } = body || {};
+  const { systemPrompt, userPrompt, searchQuery, searchIngredient, includeAI = true, includeDB = true } = body || {};
 
   // Type validation — systemPrompt and userPrompt required only when AI is enabled
   if (includeAI && (typeof systemPrompt !== "string" || typeof userPrompt !== "string")) {
@@ -270,13 +270,17 @@ export async function POST(request) {
   }
 
   // Run DB search, TheMealDB search, and AI generation in parallel
-  const dbPromise = searchDatabase(cleanSearchQuery, cleanSearchIngredient);
+  const dbPromise = includeDB
+    ? searchDatabase(cleanSearchQuery, cleanSearchIngredient)
+    : Promise.resolve([]);
 
-  const mealDBPromise = cleanSearchQuery
-    ? searchMealDB(cleanSearchQuery)
-    : cleanSearchIngredient
-      ? searchMealDBByIngredient(cleanSearchIngredient)
-      : Promise.resolve([]);
+  const mealDBPromise = includeDB
+    ? (cleanSearchQuery
+        ? searchMealDB(cleanSearchQuery)
+        : cleanSearchIngredient
+          ? searchMealDBByIngredient(cleanSearchIngredient)
+          : Promise.resolve([]))
+    : Promise.resolve([]);
 
   // Only run AI if enabled
   let aiResult = null;

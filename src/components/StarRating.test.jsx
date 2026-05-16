@@ -62,19 +62,6 @@ describe("StarRating", () => {
     }));
   });
 
-  it("shows Saved! when API returns saved=true", async () => {
-    const user = userEvent.setup();
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ averageRating: 4.0, ratingCount: 1, saved: true }),
-    });
-
-    render(<StarRating slug="test" recipe={mockRecipe} />);
-    await user.click(screen.getAllByRole("button")[4]); // 5 stars
-
-    expect(await screen.findByText("Saved!")).toBeInTheDocument();
-  });
-
   it("does not re-submit the same rating", async () => {
     const user = userEvent.setup();
     globalThis.fetch = vi.fn().mockResolvedValue({

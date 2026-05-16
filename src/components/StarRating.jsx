@@ -6,7 +6,6 @@ export default function StarRating({ slug, recipe, initialRating = 0, initialCou
   const [avgRating, setAvgRating] = useState(initialRating);
   const [ratingCount, setRatingCount] = useState(initialCount);
   const [submitting, setSubmitting] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   // Load user's previous rating from localStorage
   useEffect(() => {
@@ -39,7 +38,7 @@ export default function StarRating({ slug, recipe, initialRating = 0, initialCou
         const data = await res.json();
         setAvgRating(data.averageRating);
         setRatingCount(data.ratingCount);
-        if (data.saved) setSaved(true);
+        // Recipe saved to DB if data.saved is true (no UI feedback needed)
       }
     } catch (_e) {
       // Rating failed silently — localStorage still has the user's rating
@@ -80,13 +79,6 @@ export default function StarRating({ slug, recipe, initialRating = 0, initialCou
           fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--font-body)",
         }}>
           {avgRating.toFixed(1)} ({ratingCount})
-        </span>
-      )}
-      {saved && (
-        <span style={{
-          fontSize: 11, color: "var(--accent)", fontFamily: "var(--font-body)", fontWeight: 600,
-        }}>
-          Saved!
         </span>
       )}
     </div>

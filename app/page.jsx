@@ -40,6 +40,7 @@ export default function HomePage() {
   const [error, setError] = useState(null);
   const [legalPage, setLegalPage] = useState(null);
   const [includeAI, setIncludeAI] = useState(true);
+  const [includeDB, setIncludeDB] = useState(true);
   const inputRef = useRef(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -55,6 +56,7 @@ export default function HomePage() {
         if (s.ingredients?.length) setIngredients(s.ingredients);
         if (s.results) setResults(s.results);
         if (s.includeAI !== undefined) setIncludeAI(s.includeAI);
+        if (s.includeDB !== undefined) setIncludeDB(s.includeDB);
       }
     } catch (_e) { /* sessionStorage unavailable */ }
     setHydrated(true);
@@ -65,9 +67,9 @@ export default function HomePage() {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      sessionStorage.setItem("plateful_session", JSON.stringify({ tab, results, query, ingredients, includeAI }));
+      sessionStorage.setItem("plateful_session", JSON.stringify({ tab, results, query, ingredients, includeAI, includeDB }));
     } catch (_e) { /* sessionStorage full or unavailable */ }
-  }, [hydrated, tab, results, query, ingredients, includeAI]);
+  }, [hydrated, tab, results, query, ingredients, includeAI, includeDB]);
 
   const switchTab = (newTab) => {
     if (newTab !== tab) {
@@ -99,7 +101,7 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ systemPrompt, userPrompt, searchQuery, searchIngredient, includeAI }),
+        body: JSON.stringify({ systemPrompt, userPrompt, searchQuery, searchIngredient, includeAI, includeDB }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `API error ${res.status}`);
@@ -116,7 +118,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [includeAI]);
+  }, [includeAI, includeDB]);
 
   const sanitizeInput = (str, maxLen = 200) =>
     str.replace(/[^\w\s,.'"-]/g, "").slice(0, maxLen).trim();
@@ -243,24 +245,47 @@ export default function HomePage() {
                   >×</button>
                 )}
               </div>
-              <button onClick={searchRecipes} disabled={loading || !query.trim()} style={{
+              <button onClick={searchRecipes} disabled={loading || !query.trim() || (!includeAI && !includeDB)} style={{
                 padding: "14px 22px", borderRadius: 14, border: "none",
-                background: query.trim() ? "var(--accent)" : "var(--border-light)",
-                color: query.trim() ? "#FFFFFF" : "var(--text-muted)",
+                background: query.trim() && (includeAI || includeDB) ? "var(--accent)" : "var(--border-light)",
+                color: query.trim() && (includeAI || includeDB) ? "#FFFFFF" : "var(--text-muted)",
                 fontWeight: 800, fontSize: 15, fontFamily: "var(--font-body)",
-                cursor: query.trim() ? "pointer" : "default", transition: "all 0.2s",
-                boxShadow: query.trim() ? "var(--shadow-md)" : "none",
+                cursor: query.trim() && (includeAI || includeDB) ? "pointer" : "default", transition: "all 0.2s",
+                boxShadow: query.trim() && (includeAI || includeDB) ? "var(--shadow-md)" : "none",
               }}>
                 Go
               </button>
             </div>
             <label style={{
-              display: "flex", alignItems: "center", gap: 10, marginTop: 12,
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              marginTop: 20,
               fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text-muted)",
               cursor: "pointer", userSelect: "none",
             }}>
+              <input type="checkbox" checked={includeDB} onChange={e => setIncludeDB(e.target.checked)} style={{ display: "none" }} />
+              Include database recipes
               <span style={{
-                display: "inline-block", width: 40, height: 22, borderRadius: 11,
+                display: "inline-block", width: 40, height: 22, borderRadius: 11, flexShrink: 0,
+                background: includeDB ? "var(--accent)" : "var(--border-light)",
+                position: "relative", transition: "background 0.2s",
+              }}>
+                <span style={{
+                  position: "absolute", top: 2, left: includeDB ? 20 : 2,
+                  width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                  transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                }} />
+              </span>
+            </label>
+            <label style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              marginTop: 6,
+              fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text-muted)",
+              cursor: "pointer", userSelect: "none",
+            }}>
+              <input type="checkbox" checked={includeAI} onChange={e => setIncludeAI(e.target.checked)} style={{ display: "none" }} />
+              Include AI-generated recipes
+              <span style={{
+                display: "inline-block", width: 40, height: 22, borderRadius: 11, flexShrink: 0,
                 background: includeAI ? "var(--accent)" : "var(--border-light)",
                 position: "relative", transition: "background 0.2s",
               }}>
@@ -270,8 +295,6 @@ export default function HomePage() {
                   transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                 }} />
               </span>
-              <input type="checkbox" checked={includeAI} onChange={e => setIncludeAI(e.target.checked)} style={{ display: "none" }} />
-              Include AI-generated recipes
             </label>
           </div>
         )}
@@ -324,12 +347,37 @@ export default function HomePage() {
             )}
             {ingredients.length > 0 && (
               <label style={{
-                display: "flex", alignItems: "center", gap: 10, marginBottom: 12,
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                marginBottom: 6,
                 fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text-muted)",
                 cursor: "pointer", userSelect: "none",
               }}>
+                <input type="checkbox" checked={includeDB} onChange={e => setIncludeDB(e.target.checked)} style={{ display: "none" }} />
+                Include database recipes
                 <span style={{
-                  display: "inline-block", width: 40, height: 22, borderRadius: 11,
+                  display: "inline-block", width: 40, height: 22, borderRadius: 11, flexShrink: 0,
+                  background: includeDB ? "var(--accent)" : "var(--border-light)",
+                  position: "relative", transition: "background 0.2s",
+                }}>
+                  <span style={{
+                    position: "absolute", top: 2, left: includeDB ? 20 : 2,
+                    width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                    transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                  }} />
+                </span>
+              </label>
+            )}
+            {ingredients.length > 0 && (
+              <label style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                marginBottom: 12,
+                fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text-muted)",
+                cursor: "pointer", userSelect: "none",
+              }}>
+                <input type="checkbox" checked={includeAI} onChange={e => setIncludeAI(e.target.checked)} style={{ display: "none" }} />
+                Include AI-generated recipes
+                <span style={{
+                  display: "inline-block", width: 40, height: 22, borderRadius: 11, flexShrink: 0,
                   background: includeAI ? "var(--accent)" : "var(--border-light)",
                   position: "relative", transition: "background 0.2s",
                 }}>
@@ -339,14 +387,13 @@ export default function HomePage() {
                     transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                   }} />
                 </span>
-                <input type="checkbox" checked={includeAI} onChange={e => setIncludeAI(e.target.checked)} style={{ display: "none" }} />
-                Include AI-generated recipes
               </label>
             )}
             {ingredients.length > 0 && (
-              <button onClick={searchByIngredients} disabled={loading} style={{
+              <button onClick={searchByIngredients} disabled={loading || (!includeAI && !includeDB)} style={{
                 width: "100%", padding: "16px", borderRadius: 50, border: "none",
-                background: "var(--accent)", color: "#FFFFFF",
+                background: includeAI || includeDB ? "var(--accent)" : "var(--border-light)",
+                color: includeAI || includeDB ? "#FFFFFF" : "var(--text-muted)",
                 fontWeight: 800, fontSize: 16, fontFamily: "var(--font-body)",
                 cursor: "pointer", transition: "all 0.2s",
                 boxShadow: "var(--shadow-md)",
@@ -417,7 +464,10 @@ export default function HomePage() {
         {results && (tab === "search" || tab === "pantry") && (
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 12 }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 4px", color: "var(--text)" }}>
-              {tab === "pantry" ? "Here's what you can make" : "Recipes Found"}
+              {tab === "pantry" ? "Here's what you can make" : "Recipes"}
+              <span style={{ fontSize: 15, fontWeight: 400, color: "var(--text-muted)", fontFamily: "var(--font-body)", marginLeft: 8 }}>
+                ({results.length})
+              </span>
             </h2>
             {results.map((r, i) => (
               <RecipeCard key={i} recipe={r} index={i} slug={makeRecipeSlug(r)} />

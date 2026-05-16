@@ -6,7 +6,7 @@ import MacroBar from "../../../src/components/MacroBar";
 import StarRating from "../../../src/components/StarRating";
 
 const SOURCE_BADGE = {
-  "Saved": { bg: "#e8f5e9", color: "#2e7d32", label: "\u2713 Saved" },
+  "Saved": { bg: "#1B3D2F", color: "#FAF8F4", label: "Plateful", icon: true },
   "AI Generated": { bg: "var(--accent-light)", color: "var(--accent)", label: "\u2726 AI" },
   "TheMealDB": { bg: "#e8f4fd", color: "#1a73e8", label: "\ud83c\udf10 Web" },
 };
@@ -107,7 +107,21 @@ export default function RecipePageClient({ slug, serverRecipe }) {
               fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10, letterSpacing: 0.3,
               background: SOURCE_BADGE[recipe.source].bg,
               color: SOURCE_BADGE[recipe.source].color,
+              display: "inline-flex", alignItems: "center", gap: 3,
             }}>
+              {SOURCE_BADGE[recipe.source].icon && (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="12" height="12">
+                  <circle cx="16" cy="16" r="10" fill="none" stroke="#FAF8F4" strokeWidth="1.5"/>
+                  <circle cx="16" cy="16" r="7" fill="none" stroke="#FAF8F4" strokeWidth="0.8" opacity="0.5"/>
+                  <g stroke="#FAF8F4" strokeWidth="1.3" strokeLinecap="round" fill="none">
+                    <line x1="13" y1="11" x2="13" y2="21"/><line x1="11" y1="11" x2="11" y2="15"/>
+                    <line x1="15" y1="11" x2="15" y2="15"/><line x1="11" y1="15" x2="15" y2="15"/>
+                  </g>
+                  <g stroke="#FAF8F4" strokeWidth="1.3" strokeLinecap="round" fill="none">
+                    <line x1="20" y1="11" x2="20" y2="21"/>
+                  </g>
+                </svg>
+              )}
               {SOURCE_BADGE[recipe.source].label}
             </span>
           )}

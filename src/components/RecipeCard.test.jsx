@@ -112,10 +112,10 @@ describe("RecipeCard", () => {
     expect(screen.getByText(/Web/)).toBeInTheDocument();
   });
 
-  it("shows Saved badge for saved recipes", () => {
+  it("shows Plateful badge for saved recipes", () => {
     const recipe = { ...baseRecipe, source: "Saved" };
     render(<RecipeCard recipe={recipe} index={0} />);
-    expect(screen.getByText(/Saved/)).toBeInTheDocument();
+    expect(screen.getByText(/Plateful/)).toBeInTheDocument();
   });
 
   it("renders star rating component", () => {
