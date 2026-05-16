@@ -7,6 +7,10 @@ vi.mock("next/link", () => ({
   default: ({ children, href, ...props }) => <a href={href} {...props}>{children}</a>,
 }));
 
+vi.mock("./StarRating", () => ({
+  default: ({ slug }) => <div data-testid="star-rating" data-slug={slug} />,
+}));
+
 const baseRecipe = {
   name: "Spaghetti Carbonara",
   description: "Classic Italian pasta dish.",
@@ -106,5 +110,18 @@ describe("RecipeCard", () => {
     const recipe = { ...baseRecipe, source: "TheMealDB" };
     render(<RecipeCard recipe={recipe} index={0} />);
     expect(screen.getByText(/Web/)).toBeInTheDocument();
+  });
+
+  it("shows Saved badge for saved recipes", () => {
+    const recipe = { ...baseRecipe, source: "Saved" };
+    render(<RecipeCard recipe={recipe} index={0} />);
+    expect(screen.getByText(/Saved/)).toBeInTheDocument();
+  });
+
+  it("renders star rating component", () => {
+    render(<RecipeCard recipe={baseRecipe} index={0} slug="test-slug" />);
+    const rating = screen.getByTestId("star-rating");
+    expect(rating).toBeInTheDocument();
+    expect(rating).toHaveAttribute("data-slug", "test-slug");
   });
 });
