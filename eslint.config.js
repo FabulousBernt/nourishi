@@ -28,7 +28,7 @@ export default [
     },
   },
   {
-    files: ["app/api/**/*.js", "src/lib/api-helpers.js"],
+    files: ["app/api/**/*.js", "src/lib/api-helpers.js", "src/lib/db.js", "src/lib/recipe-helpers.js", "scripts/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
