@@ -4,7 +4,7 @@ AI-powered recipe discovery and meal planning app.
 
 Available at **[theplateful.app](https://theplateful.app)**
 
-## Motivation
+## Description
 
 Finding what to cook shouldn't be a chore. Existing recipe sites are cluttered with intrusive ads, long personal stories, and hard-to-navigate interfaces. The Plateful was built to give you a clean, fast way to discover recipes — whether you know exactly what you want, are working with whatever is in your fridge, or need a structured meal plan for the week ahead. We serve minimal, non-intrusive ads to keep the site free and running, without ruining your experience.
 
