@@ -44,4 +44,4 @@ Your feedback directly shapes what gets built next.
 
 ## License
 
-MIT
+All Rights Reserved
